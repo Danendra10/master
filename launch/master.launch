@@ -1,0 +1,6 @@
+<launch>
+    <param name="robot_name" value="${optenv ROBOT_NAME}" />
+
+    <node name="vision_capture" pkg="vision" type="vision_capture" output="screen" respawn="true"/>
+    <node name="vision_obstacle" pkg="vision" type="vision_obstacle" output="screen" respawn="true"/>
+</launch>
