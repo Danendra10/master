@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   comm
+  goalkeeper
+  attacker
 )
 
 ## System dependencies are found with CMake's conventions
@@ -133,7 +135,7 @@ include
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(decision_maker src/decision_maker.cpp)
+add_executable(decision_maker src/decision_maker.cpp )
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -146,7 +148,7 @@ add_executable(decision_maker src/decision_maker.cpp)
 add_dependencies(decision_maker ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(decision_maker ${catkin_LIBRARIES})
+target_link_libraries(decision_maker ${catkin_LIBRARIES} goalkeeper_lib attacker_lib)
 
 #############
 ## Install ##

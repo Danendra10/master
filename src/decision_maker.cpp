@@ -1,6 +1,16 @@
+/**
+ * @author IRIS ITS
+ * @brief All data will be fuse in this Node
+ * This Node will work in 50 Hz
+ * This Node will produced a robot_action that will be send to Motion Control Node (1000 Hz)
+ *
+ * */
+
 #include "ros/ros.h"
 #include "comm/mc_in.h"
 #include "master/BS_utils.h"
+#include "goalkeeper/goalkeeper.h"
+#include "attacker/attacker.h"
 
 // ROS
 ros::Timer main_prog;
@@ -19,13 +29,18 @@ uint16_t data_mux2;
 uint16_t mux_control;
 uint8_t me_manual;
 
+// Multirole data
+gk_data_t gk_data;
+att_data_t att_data;
+
 // Data sintetis sementara
 uint8_t robot_num = 1;
+uint8_t robot_role = 2;
 uint8_t robot_num_bin[6] = {0b00000, 0b00001, 0b00010, 0b00100, 0b01000, 0b100000};
 
 // MS
 uint8_t game_status;
-uint8_t new_set_piece;
+uint8_t robot_action;
 
 void cllbck_pc2bs(const comm::mc_inConstPtr &msg)
 {
@@ -52,7 +67,7 @@ void cllbck_pc2bs(const comm::mc_inConstPtr &msg)
         static int16_t prev_offset_th;
 
         offset_me = msg->offset_x % 10;
-        if (offset_me &&
+        if ((offset_me == robot_num) &&
             (prev_offset_x == 0 && msg->offset_x != 0) &&
             (prev_offset_y == 0 && msg->offset_y != 0) &&
             (prev_offset_th == 0 && msg->offset_th != 0))
@@ -61,6 +76,33 @@ void cllbck_pc2bs(const comm::mc_inConstPtr &msg)
             printf("BS menyuruh offset\n");
         }
     }
+}
+
+void game_process()
+{
+    switch (robot_role)
+    {
+    case 1:
+        gk_data.robot_num = robot_num;
+        gk_data.robot_x[1] = 12;
+        gk_data.robot_y[1] = 32;
+        gk_data.ball_x = 123;
+        gk_data.ball_y = 234;
+        gk_data.game_status = game_status;
+        gk_preparation(&gk_data, &robot_action);
+        break;
+    case 2:
+        att_data.robot_num = robot_num;
+        att_data.robot_x[1] = 12;
+        att_data.robot_y[1] = 32;
+        att_data.ball_x = 123;
+        att_data.ball_y = 234;
+        att_data.game_status = game_status;
+        att_run(&att_data, &robot_action);
+        break;
+    }
+
+    // printf("robot_act: %d\n", robot_action);
 }
 
 void cllbck_main(const ros::TimerEvent &)
@@ -93,20 +135,22 @@ void cllbck_main(const ros::TimerEvent &)
     }
     else
     {
-        if (me_manual)
+        if (me_manual == robot_num)
         {
             // ....
             printf("Aku manual..\n");
         }
     }
-    printf("Status game: %d\n", game_status);
+    // game_status = 'K' + 128;
+    // printf("Status game: %d\n", game_status);
+    game_process();
 }
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "decision_maker");
     ros::NodeHandle NH;
-    ros::MultiThreadedSpinner spinner(1); // Sementara hanya punya 1 callback
+    ros::MultiThreadedSpinner spinner(2); // Sementara hanya punya 2 callback
 
     ros::Subscriber sub_pc2bs = NH.subscribe("bs2pc", 10, cllbck_pc2bs);
 
