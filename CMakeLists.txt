@@ -10,9 +10,9 @@ project(master)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
-  comm
-  goalkeeper
-  attacker
+  # comm
+  # goalkeeper
+  # attacker
 )
 
 ## System dependencies are found with CMake's conventions
