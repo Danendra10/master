@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!==<![endif]-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>IRIS - Control Box</title>
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="css/controlbox.css" />
+    <!-- <link rel="stylesheet" href="css/icon.css"> -->
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/duyplus/fontawesome-pro/css/all.min.css"> -->
+
+    <!-- script -->
+    <script src="js/lib/roslib-0.20.0.min.js"></script>
+    <script src="js/lib/eventemitter2.js"></script>
+    <script src="js/lib/angular-1.7.2.min.js"></script>
+    <script src="js/lib/jquery-3.4.1.min.js"></script>
+    <!-- <script src="./script.js" async defer></script> -->
+    <script src="js/main2.js"></script>
+  </head>
+  <body
+    ng-app="mainApp"
+    ng-controller="mainAppController"
+    class="bg-zinc-900 text-zinc-50 overflow-hidden"
+  >
+    <div class="container grid grid-cols-2 px-5 py-10">
+      <div
+        class="sidekiri float-left h-[100vh] overflow-auto container flex flex-col"
+      >
+        <div class="vision-robot flex flex-col">
+          <!-- REVIEW VISION -->
+          <h1 class="text-center font-semibold text-2xl">Robot Vision</h1>
+          <div class="mx-auto py-8 flex flex-wrap">
+            <div class="flex flex-col">
+              <h3 class="text-center py-2">All Object View</h3>
+              <div
+                class="mb-4 mx-4 w-[180px] h-[360px] bg-transparent shadow-lg"
+              >
+                <img
+                  class="w-full h-full object-contain"
+                  src="{{ frame_obstacleDisplayOut }}"
+                  alt="TEST"
+                />
+              </div>
+              <div class="mx-auto">
+                <button
+                  ng-click="pause_start_stream(0)"
+                  class="{{stream_button_state(0).css}} text-slate-50 rounded-md px-3 py-2"
+                >
+                  {{stream_button_state(0).text}}
+                </button>
+              </div>
+            </div>
+
+            <div class="flex flex-col">
+              <h3 class="text-center py-2">Lapangan</h3>
+              <div
+                class="mb-4 mx-4 w-[180px] h-[360px] bg-transparent shadow-lg"
+              >
+                <img
+                  class="w-full h-full object-contain"
+                  src="{{ frame_fieldRawThreshold }}"
+                  alt=""
+                />
+              </div>
+              <div class="mx-auto">
+                <button
+                  ng-click="pause_start_stream(1)"
+                  class="{{stream_button_state(1).css}} text-slate-50 rounded-md px-3 py-2"
+                >
+                  {{stream_button_state(1).text}}
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-col">
+              <h3 class="text-center py-2">Bola</h3>
+              <div
+                class="mb-4 mx-4 w-[180px] h-[360px] bg-transparent shadow-lg"
+              >
+                <img
+                  class="w-full h-full object-contain"
+                  src="{{ frame_ballRawThreshold }}"
+                  alt=""
+                />
+              </div>
+              <div class="mx-auto">
+                <button
+                  ng-click="pause_start_stream(2)"
+                  class="{{stream_button_state(2).css}} text-slate-50 rounded-md px-3 py-2"
+                >
+                  {{stream_button_state(2).text}}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 place-items-center gap-4">
+          <div
+            class="w-3/4 sensor-garis bg-zinc-700 rounded-2xl overflow-hidden"
+          >
+            <h1 class="bg-zinc-800 py-2 w-full text-center font-semibold">
+              Sensor garis
+            </h1>
+            <div class="px-4 py-4">
+              <div class="flex grid grid-cols-2 pb-2">
+                <h3 class="">Kanan</h3>
+                <div
+                  class="my-auto ml-4 h-3 aspect-square {{isKananDetect()}} rounded-full"
+                ></div>
+              </div>
+              <div class="flex grid grid-cols-2">
+                <h3 class="">Kiri</h3>
+                <div
+                  class="my-auto ml-4 h-3 aspect-square {{isKiriDetect()}} rounded-full"
+                ></div>
+              </div>
+            </div>
+          </div>
+          <div class="w-3/4 jarak-bola bg-zinc-700 rounded-2xl overflow-hidden">
+            <h1 class="bg-zinc-800 py-2 w-full text-center font-semibold">
+              Jarak Bola
+            </h1>
+            <div class="px-4 py-4">
+              <div class="flex grid grid-cols-2">
+                <h3 class="">Lapangan :</h3>
+                <div class="my-auto ml-2 px-1 bg-sky-500 rounded-lg">
+                  <span>{{jarak_bola_pada_lapangan}}</span> cm
+                </div>
+              </div>
+              <div class="flex grid grid-cols-2 pt-2">
+                <h3 class="">Pixel :</h3>
+                <div class="my-auto ml-2 px-1 bg-sky-500 rounded-lg">
+                  <span class="w-full text-center">{{jarak_bola_frame}}</span>
+                  px
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sidekanan h-[100vh] overflow-auto">
+        <!-- INI BUTTON BUAT MENU -->
+        <div class="flex pb-4">
+          <div class="mx-auto flex flex-wrap">
+            <button
+              type="button"
+              ng-click="changeActiveIndex( 0 )"
+              class=" {{menu_buttonState(0)}}  hover:bg-zinc-400  transition-all bg-zinc-800 px-2 py-1 rounded-lg border mr-2 mb-2 hidden "
+            >
+              Monitor
+            </button>
+            <button
+              type="button"
+              ng-click="changeActiveIndex( 1 )"
+              class=" {{menu_buttonState(1)}} hover:bg-zinc-400  transition-all bg-zinc-800 px-2 py-1 rounded-lg border mr-2 mb-2"
+            >
+              Lapangan
+            </button>
+            <button
+              type="button"
+              ng-click="changeActiveIndex( 2 )"
+              class=" {{menu_buttonState(2)}} hover:bg-zinc-400  transition-all bg-zinc-800 px-2 py-1 rounded-lg border mr-2 mb-2"
+            >
+              Bola
+            </button>
+            <button
+              type="button"
+              ng-click="changeActiveIndex( 3 )"
+              class=" {{menu_buttonState(3)}} hover:bg-zinc-400  transition-all bg-zinc-800 px-2 py-1 rounded-lg border mr-2 mb-2 hidden  "
+            >
+              Visualizer
+            </button>
+            <button
+              type="button"
+              ng-click="changeActiveIndex( 4 )"
+              class=" {{menu_buttonState(4)}} hover:bg-zinc-400  transition-all bg-zinc-800 px-2 py-1 rounded-lg border mr-2 mb-2 hidden"
+            >
+              Obverse Cam
+            </button>
+            <button
+              type="button"
+              ng-click="changeActiveIndex( 5 )"
+              class=" {{menu_buttonState(5)}} hover:bg-zinc-400  transition-all bg-zinc-800 px-2 py-1 rounded-lg border mr-2 mb-2 hidden"
+            >
+              Calibrate
+            </button>
+            <button
+              type="button"
+              ng-click="changeActiveIndex( 6 )"
+              class=" {{menu_buttonState(6)}} hover:bg-zinc-400  transition-all bg-zinc-800 px-2 py-1 rounded-lg border mr-2 mb-2"
+            >
+              Regresi
+            </button>
+            <button
+              type="button"
+              ng-click="changeActiveIndex( 7 )"
+              class=" {{menu_buttonState(7)}}  hover:bg-zinc-400  transition-all   px-2 py-1 rounded-lg border mr-2 mb-2  "
+            >
+              Auto Thresshold
+            </button>
+          </div>
+        </div>
+
+        <!-- FIELD THRESSHOLD -->
+        <div
+          ng-if="menu_contentState(1)"
+          class="bg-zinc-700 rounded-2xl overflow-hidden"
+        >
+          <h1 class="bg-zinc-800 py-2 w-full text-center font-semibold">
+            Thresshold Lapangan
+          </h1>
+          <div class="px-4 py-4 gap-4 grid grid-cols-2">
+            <div class="slider my-auto">
+              <!-- REPEAT THRESSHOLD -->
+              <div
+                class="grid grid-cols-6 pb-2"
+                ng-repeat="i in field_thresholdParameter"
+              >
+                <h1 class="col-span-1 place-self-center">{{i.label}}</h1>
+                <input
+                  ng-change="pub_field_threshold_value(field_thresholdParameter)"
+                  type="range"
+                  class="col-span-4 w-full"
+                  min="{{i.min}}"
+                  max="{{i.max}}"
+                  ng-model="i.value"
+                />
+                <h1 class="col-span-1 place-self-center">{{i.value}}</h1>
+              </div>
+            </div>
+            <div class="helper place-self-center">
+              <div class="w-full">
+                <img src="./hsv.png" class="w-full" alt="hsv" />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex pb-4">
+            <button
+              ng-click="set_default_thresshold_lapangan()"
+              class="mx-auto hover:bg-orange-700 bg-orange-500 text-bla px-2 py-1 rounded-lg"
+            >
+              Reset to Default
+            </button>
+          </div>
+        </div>
+
+        <!-- BALL THRESSHOLD -->
+        <div
+          ng-if="menu_contentState(2)"
+          class="bg-zinc-700 rounded-2xl overflow-hidden"
+        >
+          <h1 class="bg-zinc-800 py-2 w-full text-center font-semibold">
+            Thresshold Bola
+          </h1>
+          <div class="px-4 py-4 gap-4 grid grid-cols-2">
+            <div class="slider my-auto">
+              <!-- REPEAT THRESSHOLD -->
+              <div
+                class="grid grid-cols-6 pb-2"
+                ng-repeat="i in ball_thresholdParameter"
+              >
+                <h1 class="col-span-1 place-self-center">{{i.label}}</h1>
+                <input
+                  ng-change="pub_ball_threshold_value(ball_thresholdParameter)"
+                  type="range"
+                  class="col-span-4 w-full"
+                  min="{{i.min}}"
+                  max="{{i.max}}"
+                  ng-model="i.value"
+                />
+                <h1 class="col-span-1 place-self-center">{{i.value}}</h1>
+              </div>
+            </div>
+            <div class="helper place-self-center">
+              <div class="w-full">
+                <img src="./hsv.png" class="w-full" alt="hsv" />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex pb-4">
+            <button
+              ng-click="set_default_thresshold_bola()"
+              class="mx-auto hover:bg-orange-700 bg-orange-500 text-bla px-2 py-1 rounded-lg"
+            >
+              Reset to Default
+            </button>
+          </div>
+        </div>
+
+        <!-- REGRESION BOX -->
+        <div
+          ng-if="menu_contentState(6)"
+          class="bg-zinc-700 rounded-2xl overflow-hidden"
+        >
+          <h1 class="bg-zinc-800 py-2 w-full text-center font-semibold">
+            Regresion Toolbox
+          </h1>
+          <div class="px-4 py-4 w-full h-full">
+            <div>
+              <h1 class="inline-block mr-2">Jarak Awal</h1>
+              <input
+                class="bg-black/20 rounded-lg w-10 p-1"
+                type="text"
+                name=""
+                id="jarak-awal"
+                value="20"
+              />
+            </div>
+
+            <div class="my-2">
+              <h1 class="inline-block mr-2">Selisih jarak</h1>
+              <input
+                class="bg-black/20 rounded-lg w-10 p-1"
+                type="text"
+                name=""
+                id="selisih-jarak"
+                value="10"
+              />
+            </div>
+
+            <textarea
+              placeholder="Data regresi tergenerate disini"
+              class="mb-4 w-full bg-black/5 p-2 h-96 border border-white rounded-lg resize-none"
+              id="regression-area"
+            ></textarea>
+            <button
+              ng-click="regresi_pixel_data()"
+              type="button"
+              class="mx-auto hover:bg-sky-700 bg-sky-500 text-bla px-2 py-1 rounded-lg"
+            >
+              Tambah data
+            </button>
+            <button
+              ng-click="reset_regresi()"
+              type="button"
+              class="mx-auto hover:bg-orange-700 bg-orange-500 text-bla px-2 py-1 rounded-lg"
+            >
+              Reset Regresi
+            </button>
+          </div>
+        </div>
+
+        <!-- Convert to config format -->
+        <div
+          ng-if="menu_contentState(6)"
+          class="bg-zinc-700 rounded-2xl overflow-hidden my-12"
+        >
+          <h1 class="bg-zinc-800 py-2 w-full text-center font-semibold">
+            Convert To Config Format
+          </h1>
+          <div class="px-4 py-4 w-full h-full">
+            <div class="grid grid-cols-2 gap-4">
+              <textarea
+                placeholder="Data regresi tergenerate disini"
+                class="mb-4 w-full bg-black/5 p-2 h-96 border border-white rounded-lg resize-none"
+                id="data-regresi"
+              ></textarea>
+              <textarea
+                placeholder="Data regresi tergenerate disini"
+                class="mb-4 w-full bg-black/5 p-2 h-96 border border-white rounded-lg resize-none"
+                id="formated"
+              ></textarea>
+            </div>
+
+            <div class="flex">
+              <button
+                ng-click="convert_format()"
+                type="button"
+                class="mx-auto hover:bg-sky-700 bg-sky-500 text-bla px-2 py-1 rounded-lg"
+              >
+                Convert
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Auto Thresshold Side -->
+        <div
+          ng-if="menu_contentState(7)"
+          class="bg-zinc-700 rounded-2xl overflow-hidden"
+        >
+          <h1 class="bg-zinc-800 py-2 w-full text-center font-semibold">
+            Select Object to Thresshold
+          </h1>
+          <div class="px-4 py-4 w-full h-full flex">
+            <div class="w-[270px] h-[480px]">
+              <img
+                class="h-full w-full"
+                ng-click="selectPoint()"
+                id="at_source"
+                src="{{frame_original_bgr}}"
+                alt=""
+              />
+            </div>
+            <div class="ml-4">
+              <h1 class="mb-2">Titik 1 : ({{point[0]}},{{point[1]}})</h1>
+              <h1>Titik 2 : ({{point[2]}},{{point[3]}})</h1>
+              <!-- <button class="bg-sky-500 px-3 py-1 rounded-lg mr-3">Capture</button> -->
+              <button
+                ng-click="thressholdNow()"
+                class="hover:bg-sky-700 bg-sky-500 px-3 py-1 rounded-lg mt-4"
+              >
+                Thresshold !!
+              </button>
+              <button
+                ng-click="clearPoint()"
+                class="hover:bg-rose-700 bg-rose-500 px-3 py-1 rounded-lg mt-4"
+              >
+                Clear Point
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pengaturan Camera -->
+        <div
+          ng-if="menu_contentState(1) || menu_contentState(2)"
+          class="bg-zinc-700 rounded-2xl overflow-hidden mt-8 w-1/2"
+        >
+          <h1 class="bg-zinc-800 py-2 w-full text-center font-semibold">
+            <button id="kuncikamera">
+              <span>Camera Setting</span>
+              <i class="kuncikamera text-green-500 fa-solid fa-lock"></i>
+            </button>
+          </h1>
+          <div id="sliderCamera" class="py-4">
+            <div
+              class="grid grid-cols-6 pb-2"
+              ng-repeat="i in camera_parameter"
+            >
+              <h1 class="col-span-1 place-self-center">{{i.label}}</h1>
+              <input
+                max="{{i.max}}"
+                min="{{i.min}}"
+                type="range"
+                class="col-span-4 w-full"
+                ng-model="i.value"
+                ng-change="pub_cameraConfig(camera_parameter)"
+              />
+              <h1 class="col-span-1 place-self-center">{{i.value}}</h1>
+            </div>
+
+            <div class="flex pt-4">
+              <button
+                ng-click="set_default_camera_setting()"
+                class="mx-auto hover:bg-orange-700 bg-orange-500 text-bla px-2 py-1 rounded-lg"
+              >
+                Reset to Default
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h1>IRIS ControlBox Remastered v2.0</h1>
+        </div>
+      </div>
+    </div>
+    <!-- <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script> -->
+  </body>
+</html>

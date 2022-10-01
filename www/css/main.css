@@ -1,0 +1,42 @@
+input {
+    /* membatasi ukuran slider */
+    width: 90%;
+    max-width: 240px;
+    margin-bottom: 5%;
+}
+
+img {
+    /* membatasi ukuran gambar */
+    width: 90%;
+    max-width: 240px;
+    /* agar gambar berada di tengah */
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    /* memberi efek bayangan */
+    box-shadow: 5px 5px 5px grey;
+}
+
+.btn {
+    margin-right: 1%;
+}
+
+#fieldCanvas {
+    left: 0;
+    top: 0;
+    z-index: 0;
+    position: absolute;
+}
+
+#objectCanvas {
+    left: 0;
+    top: 0;
+    z-index: 1;
+    position: absolute;
+}
+
+#gambarBGR {
+    left: 700px;
+    z-index:2;
+    position: absolute;
+}
