@@ -11,6 +11,7 @@
 #include "master/BS_utils.h"
 #include "goalkeeper/goalkeeper.h"
 #include "attacker/attacker.h"
+#include "master/master.h"
 
 // ROS
 ros::Timer main_prog;
@@ -42,6 +43,12 @@ uint8_t robot_num_bin[6] = {0b00000, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000
 // MS
 uint8_t game_status;
 uint8_t robot_action;
+
+//---Ball's datas
+//==============
+float ball_on_field[4];
+uint8_t ball_status;
+
 
 void init_default_var()
 {
@@ -174,11 +181,22 @@ int main(int argc, char **argv)
 
     init_default_var();
 
-    ros::Subscriber sub_pc2bs = NH.subscribe("bs2pc", 10, cllbck_pc2bs);
+    sub_pc2bs = NH.subscribe("bs2pc", 10, cllbck_pc2bs);
+    sub_vision_data = NH.subscribe("/vision_data", 10, CllbckVisionData);
+
 
     main_prog = NH.createTimer(ros::Duration(0.02), cllbck_main);
 
     spinner.spin();
 
     return 0;
+}
+
+void CllbckVisionData(const master::VisionConstPtr &msg)
+{
+    ball_on_field[0] = msg->ball_on_field_x;
+    ball_on_field[1] = msg->ball_on_field_y;
+    ball_on_field[2] = msg->ball_on_field_theta;
+    ball_on_field[3] = msg->ball_on_field_dist;
+    printf("Ball on field: %f\n", ball_on_field[0]);
 }

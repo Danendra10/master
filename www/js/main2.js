@@ -39,7 +39,7 @@ mainApp.controller("mainAppController", function ($scope, $interval) {
           ":9901" +
           "/stream?topic=" +
           $scope.ns +
-          "/vision_obstacle/display_out&type=ros_compressed";
+          "/vision_field_final_threshold&type=ros_compressed";
       } else if (index_stream == 1) {
         $scope.frame_fieldRawThreshold =
           "http://" +
@@ -47,7 +47,7 @@ mainApp.controller("mainAppController", function ($scope, $interval) {
           ":9901" +
           "/stream?topic=" +
           $scope.ns +
-          "/vision_field/raw_threshold&type=ros_compressed";
+          "/vision_raw&type=ros_compressed";
       } else if (index_stream == 2) {
         $scope.frame_ballRawThreshold =
           "http://" +
@@ -55,7 +55,7 @@ mainApp.controller("mainAppController", function ($scope, $interval) {
           ":9901" +
           "/stream?topic=" +
           $scope.ns +
-          "/vision_ball/raw_threshold&type=ros_compressed";
+          "/vision_ball_final_threshold&type=ros_compressed";
       }
     }
   };
@@ -247,7 +247,7 @@ mainApp.controller("mainAppController", function ($scope, $interval) {
     ":9901" +
     "/stream?topic=" +
     $scope.ns +
-    "/vision_field/raw_threshold&type=ros_compressed";
+    "/vision_raw&type=ros_compressed";
 
   $scope.frame_ballRawThreshold =
     "http://" +
@@ -255,7 +255,7 @@ mainApp.controller("mainAppController", function ($scope, $interval) {
     ":9901" +
     "/stream?topic=" +
     $scope.ns +
-    "/vision_ball/raw_threshold&type=ros_compressed";
+    "/vision_ball_final_threshold&type=ros_compressed";
 
   $scope.frame_obstacleDisplayOut =
     "http://" +
@@ -263,7 +263,7 @@ mainApp.controller("mainAppController", function ($scope, $interval) {
     ":9901" +
     "/stream?topic=" +
     $scope.ns +
-    "/vision_obstacle/display_out&type=ros_compressed";
+    "/vision_field_final_threshold&type=ros_compressed";
 
   $scope.frame_obverseRawThreshold =
     "http://" +

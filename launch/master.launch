@@ -1,6 +1,24 @@
 <launch>
     <param name="robot_name" value="${optenv ROBOT_NAME}" />
 
+    <node name="web_video_server" pkg="web_video_server" type="web_video_server" output="screen">
+        <param name="port" value="9901" />
+        <param name="ros_threads" value="8" />
+    </node>
+
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
+        <arg name="port" value="9900" />
+    </include>
+
+    <include file="$(find roswww)/launch/roswww.launch">
+        <arg name="port" value="9999" />
+        <arg name="cached" value="false" />
+    </include>
+
+
     <node name="vision_capture" pkg="vision" type="vision_capture" output="screen" respawn="true"/>
-    <node name="vision_obstacle" pkg="vision" type="vision_obstacle" output="screen" respawn="true"/>
+    <node name="vision_main" pkg="vision" type="vision_main" output="screen" respawn="true"/>
+
+    <node name="decision_maker" pkg="master" type="decision_maker" output="screen" respawn="true"/>
+    <!-- <node name="comm_motor" pkg="comm" type="comm_motor" output="screen" respawn="true"/> -->
 </launch>
