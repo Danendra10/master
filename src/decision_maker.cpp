@@ -13,44 +13,33 @@
 #include "attacker/attacker.h"
 #include "master/master.h"
 
-// ROS
-ros::Timer main_prog;
 
-// BS data
-uint8_t status_control_BS;
-uint8_t BS_normal;
-uint8_t BS_auto_callib;
-uint8_t BS_cmd;
-uint8_t style;
-int16_t manual_x_bs;
-int16_t manual_y_bs;
-int16_t manual_th_bs;
-uint16_t data_mux1;
-uint16_t data_mux2;
-uint16_t mux_control;
-uint8_t me_manual;
+int i = 0;
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "decision_maker");
+    ros::NodeHandle NH;
+    ros::MultiThreadedSpinner spinner(2); // Sementara hanya punya 2 callback
 
-// Multirole data
-gk_data_t gk_data;
-gk_ret_t gk_ret;
-att_data_t att_data;
+    InitDefaultVar();
 
-// Data sintetis sementara
-uint8_t robot_num = 1;
-uint8_t robot_role = 1;
-uint8_t robot_num_bin[6] = {0b00000, 0b00001, 0b00010, 0b00100, 0b01000, 0b100000};
-
-// MS
-uint8_t game_status;
-uint8_t robot_action;
-
-//---Ball's datas
-//==============
-float ball_on_field[4];
-uint8_t ball_status;
+    sub_pc2bs = NH.subscribe("bs2pc", 10, CllbckPc2Bs);
+    sub_vision_data = NH.subscribe("/vision_data", 10, CllbckVisionData);
 
 
-void init_default_var()
+    tim_decision_making = NH.createTimer(ros::Duration(0.02), CllbckDecMaking);
+    tim_motor_control = NH.createTimer(ros::Duration(0.001), CllbckMotorControl);
+
+    spinner.spin();
+
+    return 0;
+}
+
+void CllbckMotorControl(const ros::TimerEvent &msg)
+{    
+}
+
+void InitDefaultVar()
 {
     gk_data.robot_x[1] = 400;
     gk_data.robot_y[1] = 0;
@@ -60,7 +49,7 @@ void init_default_var()
     gk_ret.vel_th_gain = 1;
 }
 
-void cllbck_pc2bs(const comm::mc_inConstPtr &msg)
+void CllbckPc2Bs(const comm::mc_inConstPtr &msg)
 {
     // Iam controlled by BS? (bit-selection)
     if ((msg->mux_control & robot_num_bin[robot_num]) >> (robot_num - 1))
@@ -91,12 +80,12 @@ void cllbck_pc2bs(const comm::mc_inConstPtr &msg)
             (prev_offset_th == 0 && msg->offset_th != 0))
         {
             // set offset..
-            printf("BS menyuruh offset\n");
+            // printf("BS menyuruh offset\n");
         }
     }
 }
 
-void game_process()
+void GameProcess()
 {
     switch (robot_role)
     {
@@ -110,7 +99,7 @@ void game_process()
         gk_data.game_status = game_status;
         gk_run(&gk_data, &gk_ret);
 
-        printf("ret: %d %d %d\n", gk_ret.act_type, gk_ret.target_x, gk_ret.target_y);
+        // printf("ret: %d %d %d\n", gk_ret.act_type, gk_ret.target_x, gk_ret.target_y);
 
         // Ret send to Motion Control node
 
@@ -129,10 +118,10 @@ void game_process()
         break;
     }
 
-    // printf("robot_act: %d\n", robot_action);
+    printf("robot_act: %d\n", robot_action);
 }
 
-void cllbck_main(const ros::TimerEvent &)
+void CllbckDecMaking(const ros::TimerEvent &msg)
 {
     // static uint8_t prev_BS_cmd = 0;
     // static uint8_t prev_prev_BS_cmd = 0;
@@ -165,31 +154,12 @@ void cllbck_main(const ros::TimerEvent &)
     //     if (me_manual == robot_num)
     //     {
     //         // ....
-    //         printf("Aku manual..\n");
+            printf("Aku manual..\n");
     //     }
     // }
     game_status = 'K';
-    // printf("Status game: %d\n", game_status);
-    game_process();
-}
-
-int main(int argc, char **argv)
-{
-    ros::init(argc, argv, "decision_maker");
-    ros::NodeHandle NH;
-    ros::MultiThreadedSpinner spinner(2); // Sementara hanya punya 2 callback
-
-    init_default_var();
-
-    sub_pc2bs = NH.subscribe("bs2pc", 10, cllbck_pc2bs);
-    sub_vision_data = NH.subscribe("/vision_data", 10, CllbckVisionData);
-
-
-    main_prog = NH.createTimer(ros::Duration(0.02), cllbck_main);
-
-    spinner.spin();
-
-    return 0;
+    printf("Status game: %d\n", game_status);
+    GameProcess();
 }
 
 void CllbckVisionData(const master::VisionConstPtr &msg)
@@ -198,5 +168,10 @@ void CllbckVisionData(const master::VisionConstPtr &msg)
     ball_on_field[1] = msg->ball_on_field_y;
     ball_on_field[2] = msg->ball_on_field_theta;
     ball_on_field[3] = msg->ball_on_field_dist;
-    printf("Ball on field: %f\n", ball_on_field[0]);
+
+    ball_on_frame[0] = msg->ball_on_frame_x;
+    ball_on_frame[1] = msg->ball_on_frame_y;
+    ball_on_frame[2] = msg->ball_on_frame_theta;
+    ball_on_frame[3] = msg->ball_on_frame_dist;
+    // printf("Ball on frame: %f %f %f %f", ball_on_frame[0], ball_on_frame[1], ball_on_frame[2], ball_on_frame[3]);
 }

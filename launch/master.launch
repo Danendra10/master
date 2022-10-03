@@ -1,5 +1,5 @@
 <launch>
-    <param name="robot_name" value="${optenv ROBOT_NAME}" />
+    <param name="robot_name" value="iris1" />
 
     <node name="web_video_server" pkg="web_video_server" type="web_video_server" output="screen">
         <param name="port" value="9901" />
