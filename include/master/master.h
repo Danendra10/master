@@ -3,6 +3,40 @@
 
 #include "ros/ros.h"
 #include "master/Vision.h"
+//include termios
+#include <termios.h>
+#include <sys/ioctl.h>
+
+//---Enumeration
+//==============
+
+enum robot_state{
+    //---General Cmd
+    status_iddle = 83, // S | 0x53
+    status_start = 115, // s | 0x73
+
+    //---Home Cmd
+    status_preparation_kickoff_home = 75, // K | 0x4B
+    status_preparation_freekick_home = 70, // F | 0x46
+    status_preparation_goalkick_home = 71, // G | 0x47
+    status_preparation_cornerkick_home = 67, // C | 0x43
+    status_preparation_penaltykick_home = 80, // P | 0x50
+    status_preparation_throwin_home = 84, // T | 0x54
+
+    //---All Cmd
+    status_preparation_dropball = 78, // N | 0x4E
+    status_callibration = 35, // # | 0x23
+    status_park = 76, // L | 0x4C
+
+    //---Away Cmd
+    status_preparation_kickoff_away = 107, // k | 0x6B
+    status_preparation_freekick_away = 102, // f | 0x66
+    status_preparation_goalkick_away = 103, // g | 0x67
+    status_preparation_cornerkick_away = 99, // c | 0x63
+    status_preparation_penaltykick_away = 112, // p | 0x70
+    status_preparation_throwin_away = 116, // t | 0x74
+
+};
 
 //---Timer
 //========
@@ -61,4 +95,7 @@ void CllbckPc2Bs(const comm::mc_inConstPtr &msg);
 void CllbckDecMaking(const ros::TimerEvent &msg);
 void InitDefaultVar();
 void GameProcess();
+void GetKeyboard();
+void loadConfig();
+uint8_t kbhit();
 #endif

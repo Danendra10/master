@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   comm
   goalkeeper
   attacker
+  # assist
+  # defender
 )
 
 find_package(yaml-cpp REQUIRED)
