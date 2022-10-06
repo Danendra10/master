@@ -3,9 +3,15 @@
 
 #include "ros/ros.h"
 #include "master/Vision.h"
-//include termios
+#include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/Twist.h"
 #include <termios.h>
 #include <sys/ioctl.h>
+#include "master/Vision.h"
+#include "goalkeeper/goalkeeper.h"
+#include "comm/mc_in.h"
+#include "attacker/attacker.h"
+using namespace std;
 
 //---Enumeration
 //==============
@@ -13,6 +19,7 @@
 enum robot_state{
     //---General Cmd
     status_iddle = 83, // S | 0x53
+    status_iddle_2 = 32, // Space | 0x20    
     status_start = 115, // s | 0x73
 
     //---Home Cmd
@@ -36,6 +43,14 @@ enum robot_state{
     status_preparation_penaltykick_away = 112, // p | 0x70
     status_preparation_throwin_away = 116, // t | 0x74
 
+    //---Keyboard Manual
+    status_keyboard_maju = 106, // j | 0x6A
+    status_keyboard_kiri = 98, // b | 0x62
+    status_keyboard_mundur = 110, // n | 0x6E
+    status_keyboard_kanan = 109, // m | 0x6D
+    status_keyboard_rotasi_kanan = 48, // 0 | 0x30
+    status_keyboard_rotasi_kiri = 57, // 9 | 0x39
+
 };
 
 //---Timer
@@ -47,7 +62,12 @@ ros::Timer tim_motor_control;
 //================
 ros::Subscriber sub_pc2bs;
 ros::Subscriber sub_vision_data;
+ros::Subscriber sub_odometry_data;
+
+
 //---Publisher---
+//===============
+ros::Publisher pub_vel_motor;
 
 //---BS data
 //==========
@@ -85,17 +105,34 @@ uint8_t robot_action;
 //==============
 float ball_on_field[4];
 float ball_on_frame[4];
+vector<uint8_t> obs_on_field;
 uint8_t ball_status;
 
-//--Prototypes
-//============
-void CllbckVisionData(const master::VisionConstPtr &msg);
-void CllbckMotorControl(const ros::TimerEvent &msg);
-void CllbckPc2Bs(const comm::mc_inConstPtr &msg);
-void CllbckDecMaking(const ros::TimerEvent &msg);
+//---Robot's datas
+//===============
+float robot_on_field[4];
+float robot_on_field_offset[4];
+
+
+
+/* Give the current real position from buffer positions */
+void setOdometryBuffer(float _x, float _y, float _th);
+void SetPosXBuffer(float _val);
+void SetPosYBuffer(float _val);
+void SetPosThBuffer(float _val);
+
 void InitDefaultVar();
 void GameProcess();
 void GetKeyboard();
 void loadConfig();
 uint8_t kbhit();
+
+
+//--Ros Callback Prototypes
+//=========================
+void CllbckOdometryData(const geometry_msgs::Pose2DConstPtr &msg);
+void CllbckVisionData(const master::VisionConstPtr &msg);
+void CllbckMotorControl(const ros::TimerEvent &msg);
+void CllbckPc2Bs(const comm::mc_inConstPtr &msg);
+void CllbckDecMaking(const ros::TimerEvent &msg);
 #endif

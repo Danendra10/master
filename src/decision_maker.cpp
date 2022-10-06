@@ -32,10 +32,13 @@ int main(int argc, char **argv)
     InitDefaultVar();
 
     sub_pc2bs = NH.subscribe("bs2pc", 10, CllbckPc2Bs);
-    sub_vision_data = NH.subscribe("/vision_data", 10, CllbckVisionData);
+    sub_vision_data = NH.subscribe("/vision_data", 16, CllbckVisionData);
+    sub_odometry_data = NH.subscribe("/odometry_data", 16, CllbckOdometryData);
 
     tim_decision_making = NH.createTimer(ros::Duration(0.02), CllbckDecMaking);
-    tim_motor_control = NH.createTimer(ros::Duration(0.001), CllbckMotorControl);
+    tim_motor_control = NH.createTimer(ros::Duration(0.02), CllbckMotorControl);
+
+    pub_vel_motor = NH.advertise<geometry_msgs::Twist>("/cmd_vel_motor", 16);
 
     spinner.spin();
 
@@ -82,24 +85,74 @@ void GetKeyboard()
         case 'K':
             BS_cmd = status_preparation_kickoff_home;
             break;
+        case 'j':
+            BS_cmd = status_keyboard_maju;
+            break;
+        case 'b':
+            BS_cmd = status_keyboard_kiri;
+            break;
+        case 'n':
+            BS_cmd = status_keyboard_mundur;
+            break;
+        case 'm':
+            BS_cmd = status_keyboard_kanan;
+            break;
+        case '0':
+            BS_cmd = status_keyboard_rotasi_kanan;
+            break;
+        case '9':
+            BS_cmd = status_keyboard_rotasi_kiri;
+            break;
+        case ' ':
+            BS_cmd = status_iddle_2;
+            break;
         }
     }
 }
 
 void CllbckMotorControl(const ros::TimerEvent &msg)
 {
+    GetKeyboard();
+    geometry_msgs::Twist msg_vel;
+    msg_vel.linear.x = gk_ret.vel_x_gain;
+    msg_vel.linear.y = gk_ret.vel_y_gain;
+    msg_vel.angular.z = gk_ret.vel_th_gain;
+    pub_vel_motor.publish(msg_vel);
+}
+
+void CllbckOdometryData(const geometry_msgs::Pose2DConstPtr &msg)
+{
+    setOdometryBuffer(msg->x, msg->y, msg->theta);
+}
+
+void setOdometryBuffer(float _x, float _y, float _theta)
+{
+    SetPosXBuffer(_x);
+    SetPosYBuffer(_y);
+    SetPosThBuffer(_theta);
+}
+
+void SetPosXBuffer(float _val) { robot_on_field[0] = _val - robot_on_field_offset[0]; }
+void SetPosYBuffer(float _val) { robot_on_field[1] = _val - robot_on_field_offset[1]; }
+void SetPosThBuffer(float _val)
+{
+    robot_on_field[2] = _val - robot_on_field_offset[2];
+    while (robot_on_field[2] > 180)
+        robot_on_field[2] -= 360;
+    while (robot_on_field[2] < -180)
+        robot_on_field[2] += 360;
 }
 
 void InitDefaultVar()
 {
-    gk_data.robot_x[1] = 400;
-    gk_data.robot_y[1] = 0;
-    gk_data.robot_th[1] = 90;
-    gk_ret.vel_x_gain = 1;
-    gk_ret.vel_y_gain = 1;
-    gk_ret.vel_th_gain = 1;
+    gk_data.robot_x[1] = robot_on_field[0];
+    gk_data.robot_y[1] = robot_on_field[1];
+    gk_data.robot_th[1] = robot_on_field[2];
+    gk_ret.vel_x_gain = 0;
+    gk_ret.vel_y_gain = 0;
+    gk_ret.vel_th_gain = 0;
 
-    loadConfig();
+    // loadConfig();
 }
 
 void CllbckPc2Bs(const comm::mc_inConstPtr &msg)
@@ -147,12 +200,15 @@ void GameProcess()
     case 1:
         // gk_data.game_status = 'K';
         gk_data.robot_num = robot_num;
-        gk_data.robot_x[1] = 12;
-        gk_data.robot_y[1] = 32;
+        gk_data.robot_x[1] = robot_on_field[0];
+        gk_data.robot_y[1] = robot_on_field[1];
+        gk_data.robot_th[1] = robot_on_field[2];
         gk_data.ball_x = ball_on_field[0];
         gk_data.ball_y = ball_on_frame[1];
         gk_data.game_status = game_status;
         GkRun(&gk_data, &gk_ret);
+
+        // printf("GK RET: %f %f %f\n", gk_ret.vel_x_gain, gk_ret.vel_y_gain, gk_ret.vel_th_gain);
 
         // printf("ret: %d %d %d\n", gk_ret.act_type, gk_ret.target_x, gk_ret.target_y);
 
@@ -173,12 +229,12 @@ void GameProcess()
         //     break;
     }
 
-    printf("robot_act: %d\n", robot_action);
+    // printf("robot_act: %d\n", robot_action);
 }
 
 void CllbckDecMaking(const ros::TimerEvent &msg)
 {
-    GetKeyboard();
+    // GetKeyboard();
     // switch (BS_cmd)
     // {
     // case status_iddle:
@@ -222,7 +278,7 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
     // Stop
     if (prev_BS_cmd != BS_cmd && BS_cmd == 'S')
     {
-        game_status = 0;
+        game_status = status_iddle;
     }
     prev_prev_BS_cmd = prev_BS_cmd;
     prev_BS_cmd = BS_cmd;
@@ -232,11 +288,11 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
     //     if (me_manual == robot_num)
     //     {
     //         // ....
-    printf("Aku manual..\n");
+    // printf("Aku manual..\n");
     //     }
     // }
     // game_status = 'K';
-    printf("Status game: %d\n", game_status);
+    // printf("Status game: %d\n", game_status);
     GameProcess();
 }
 
@@ -251,27 +307,8 @@ void CllbckVisionData(const master::VisionConstPtr &msg)
     ball_on_frame[1] = msg->ball_on_frame_y;
     ball_on_frame[2] = msg->ball_on_frame_theta;
     ball_on_frame[3] = msg->ball_on_frame_dist;
-    // printf("Ball on frame: %f %f %f %f", ball_on_frame[0], ball_on_frame[1], ball_on_frame[2], ball_on_frame[3]);
-}
 
-void loadConfig()
-{
-    // printf("Loading configuration..\n");
-    // char *robot_num = getenv("ROBOT");
-    // char config_file[100];
-    // std::string current_dir = ros::package::getPath("master");
-    // sprintf(config_file, "%s/../../config/IRIS%s/multicast.yaml", current_dir.c_str(), robot_num);
-    // printf("config file: %s\n", config_file);
+    ball_status = msg->ball_status;
 
-    // YAML::Node config = YAML::LoadFile(config_file);
-    // strcpy(nw_config.identifier, config["identifier"].as<std::string>().c_str());
-    // strcpy(nw_config.iface, config["iface"].as<std::string>().c_str());
-    // strcpy(nw_config.multicast_ip, config["multicast_ip"].as<std::string>().c_str());
-
-    // nw_config.port = config["port"].as<int>();
-
-    // printf("identifier: %s\n", nw_config.identifier);
-    // printf("iface: %s\n", nw_config.iface);
-    // printf("multicast_ip: %s\n", nw_config.multicast_ip);
-    // printf("port: %d\n", nw_config.port);
+    obs_on_field = msg->obs_on_field;
 }
