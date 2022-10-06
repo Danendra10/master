@@ -9,9 +9,6 @@
 //---Role Packages
 #include "goalkeeper/goalkeeper.h"
 #include "attacker/attacker.h"
-// #include "assist/assist.h"
-// #include "defender/defender.h"
-
 #include "ros/ros.h"
 #include "comm/mc_in.h"
 #include "master/BS_utils.h"
