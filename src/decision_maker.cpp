@@ -231,6 +231,7 @@ void GameProcess()
 
 void CllbckDecMaking(const ros::TimerEvent &msg)
 {
+    // printf("Pos robot on dec maker : %d %d %d \n", pos_robot[0], pos_robot[1], pos_robot[2]);
     // GetKeyboard();
     // switch (BS_cmd)
     // {

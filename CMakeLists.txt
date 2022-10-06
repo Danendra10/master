@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   attacker
   # assist
   # defender
+  utils
 )
 
 find_package(yaml-cpp REQUIRED)
@@ -51,4 +52,4 @@ target_link_libraries(master_lib ${YAML_CPP_LIBRARIES} ${catkin_LIBRARIES})
 
 add_executable(decision_maker src/decision_maker.cpp )
 add_dependencies(decision_maker ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(decision_maker ${catkin_LIBRARIES} goalkeeper_lib attacker_lib)
+target_link_libraries(decision_maker ${catkin_LIBRARIES} goalkeeper_lib attacker_lib utils_lib)

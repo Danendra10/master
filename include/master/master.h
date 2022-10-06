@@ -11,7 +11,14 @@
 #include "goalkeeper/goalkeeper.h"
 #include "comm/mc_in.h"
 #include "attacker/attacker.h"
+#include "utils/utils.h"
+
 using namespace std;
+
+//=-----------------Global Variable-----------------=
+//===================================================
+extern int16_t pos_robot[3];
+
 
 //---Enumeration
 //==============
@@ -105,7 +112,7 @@ uint8_t robot_action;
 //==============
 float ball_on_field[4];
 float ball_on_frame[4];
-vector<uint8_t> obs_on_field;
+// vector<uint8_t> obs_on_field;
 uint8_t ball_status;
 
 //---Robot's datas
