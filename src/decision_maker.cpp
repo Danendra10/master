@@ -24,18 +24,22 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "decision_maker");
     ros::NodeHandle NH;
-    ros::MultiThreadedSpinner spinner(2); // Sementara hanya punya 2 callback
+    ros::MultiThreadedSpinner spinner(0); // Sementara hanya punya 2 callback
 
     InitDefaultVar();
+    tim_decision_making = NH.createTimer(ros::Duration(0.01), CllbckDecMaking);
 
     sub_pc2bs = NH.subscribe("bs2pc", 10, CllbckPc2Bs);
     sub_vision_data = NH.subscribe("/vision_data", 16, CllbckVisionData);
     sub_odometry_data = NH.subscribe("/odometry_data", 16, CllbckOdometryData);
+    sub_buttons = NH.subscribe("/button", 1, CllbckButtons);
+    sub_line_sensor = NH.subscribe("/line_sensor", 1, CllbckLineSensor);
+    sub_ball_sensor = NH.subscribe("/ball_sensor", 2, CllbckBallSensor);
 
-    tim_decision_making = NH.createTimer(ros::Duration(0.02), CllbckDecMaking);
-    tim_motor_control = NH.createTimer(ros::Duration(0.02), CllbckMotorControl);
+    // tim_motor_control = NH.createTimer(ros::Duration(0.02), CllbckMotorControl);
 
     pub_vel_motor = NH.advertise<geometry_msgs::Twist>("/cmd_vel_motor", 16);
+    pub_offset_robot = NH.advertise<geometry_msgs::Pose2D>("/offset_robot", 16);
 
     spinner.spin();
 
@@ -103,18 +107,25 @@ void GetKeyboard()
         case ' ':
             BS_cmd = status_iddle_2;
             break;
+        case 'o':
+            SetPosOffset(0, 0, 90);
+            break;
         }
     }
 }
 
+void SetPosOffset(int16_t x, int16_t y, int16_t th)
+{
+    printf("KENEK\n");
+    geometry_msgs::Pose2D pos_offset;
+    pos_offset.x = x;
+    pos_offset.y = y;
+    pos_offset.theta = th;
+    pub_offset_robot.publish(pos_offset);
+}
+
 void CllbckMotorControl(const ros::TimerEvent &msg)
 {
-    GetKeyboard();
-    geometry_msgs::Twist msg_vel;
-    msg_vel.linear.x = gk_ret.vel_x_gain;
-    msg_vel.linear.y = gk_ret.vel_y_gain;
-    msg_vel.angular.z = gk_ret.vel_th_gain;
-    pub_vel_motor.publish(msg_vel);
 }
 
 void CllbckOdometryData(const geometry_msgs::Pose2DConstPtr &msg)
@@ -129,26 +140,32 @@ void setOdometryBuffer(float _x, float _y, float _theta)
     SetPosThBuffer(_theta);
 }
 
-void SetPosXBuffer(float _val) { robot_on_field[0] = _val - robot_on_field_offset[0]; }
-void SetPosYBuffer(float _val) { robot_on_field[1] = _val - robot_on_field_offset[1]; }
+void SetPosXBuffer(float _val) { pos_robot[0] = _val - robot_on_field_offset[0]; }
+void SetPosYBuffer(float _val) { pos_robot[1] = _val - robot_on_field_offset[1]; }
 void SetPosThBuffer(float _val)
 {
-    robot_on_field[2] = _val - robot_on_field_offset[2];
-    while (robot_on_field[2] > 180)
-        robot_on_field[2] -= 360;
-    while (robot_on_field[2] < -180)
-        robot_on_field[2] += 360;
+    pos_robot[2] *= -1;
+    pos_robot[2] = _val - robot_on_field_offset[2];
+    while (pos_robot[2] > 180)
+        pos_robot[2] -= 360;
+    while (pos_robot[2] < -180)
+        pos_robot[2] += 360;
 }
 
 void InitDefaultVar()
 {
-    gk_data.robot_x[1] = robot_on_field[0];
-    gk_data.robot_y[1] = robot_on_field[1];
-    gk_data.robot_th[1] = robot_on_field[2];
+    // pos_robot_offset[0] = 0;
+    // pos_robot_offset[1] = 0;
+    // pos_robot_offset[2] = 0;
+    robot_on_field_offset[0] = 0;
+    robot_on_field_offset[1] = 0;
+    robot_on_field_offset[2] = 0;
+    gk_data.robot_x[1] = 0;
+    gk_data.robot_y[1] = 0;
+    gk_data.robot_th[1] = 90;
     gk_ret.vel_x_gain = 0;
     gk_ret.vel_y_gain = 0;
     gk_ret.vel_th_gain = 0;
-
     // loadConfig();
 }
 
@@ -229,8 +246,81 @@ void GameProcess()
     // printf("robot_act: %d\n", robot_action);
 }
 
+void CllbckVisionData(const master::VisionConstPtr &msg)
+{
+    ball_on_field[0] = msg->ball_on_field_x;
+    ball_on_field[1] = msg->ball_on_field_y;
+    ball_on_field[2] = msg->ball_on_field_theta;
+    ball_on_field[3] = msg->ball_on_field_dist;
+
+    ball_on_frame[0] = msg->ball_on_frame_x;
+    ball_on_frame[1] = msg->ball_on_frame_y;
+    ball_on_frame[2] = msg->ball_on_frame_theta;
+    ball_on_frame[3] = msg->ball_on_frame_dist;
+
+    ball_status = msg->ball_status;
+
+    obs_on_field = msg->obs_on_field;
+}
+
+void CllbckButtons(const std_msgs::UInt8ConstPtr &msg){
+    button = msg->data;
+}
+
+uint8_t GetButton()
+{
+    if((button & 0x01) != 0x01)
+        return 0;
+    if((button & 0x02) != 0x02)
+        return 1;
+    if((button & 0x04) != 0x04)
+        return 2;
+    if((button & 0x08) != 0x08)
+        return 3;
+    if((button & 0x10) != 0x10)
+        return 4;
+    if((button & 0x20) != 0x20)
+        return 5;
+    if((button & 0x40) != 0x40)
+        return 6;
+    if((button & 0x80) != 0x80)
+        return 7;
+}
+
+void CllbckLineSensor(const std_msgs::UInt8ConstPtr &msg){
+    // printf("line sensor: %d\n", msg->data);
+    SetLineSensor(msg->data);
+}
+
 void CllbckDecMaking(const ros::TimerEvent &msg)
 {
+    // printf("odom: %f %f %f\n", pos_robot[0], pos_robot[1], pos_robot[2]);
+    GetKeyboard();
+    if(LeftLineSensorDetected())
+    {
+        printf("Left Line Sensor Detected\n");
+    }
+    if(RightLineSensorDetected())
+    {
+        printf("Right Line Sensor Detected\n");
+    }
+    if(LeftLineSensorDetected() && RightLineSensorDetected())
+    {
+        printf("Both Line Sensor Detected\n");
+    }
+    // geometry_msgs::Pose2D _offset;
+    // _offset.x = gk_data.robot_x[1];
+    // _offset.y = gk_data.robot_y[1];
+    // _offset.theta = gk_data.robot_th[1];
+    // pub_offset_robot.publish(_offset);
+    geometry_msgs::Twist msg_vel;
+    msg_vel.linear.x = gk_ret.vel_x_gain;
+    msg_vel.linear.y = gk_ret.vel_y_gain;
+    msg_vel.angular.z = gk_ret.vel_th_gain;
+    // printf("vel: %f %f %f\n", msg_vel.linear.x, msg_vel.linear.y, msg_vel.angular.z);
+    pub_vel_motor.publish(msg_vel);
+
+    // ObstacleCheck(90, 90, 60);
     // printf("Pos robot on dec maker : %d %d %d \n", pos_robot[0], pos_robot[1], pos_robot[2]);
     // GetKeyboard();
     // switch (BS_cmd)
@@ -290,23 +380,10 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
     //     }
     // }
     // game_status = 'K';
-    // printf("Status game: %d\n", game_status);
+    printf("Ball sensors: %d %d\n", ball_sensor[0], ball_sensor[1]);
     GameProcess();
 }
 
-void CllbckVisionData(const master::VisionConstPtr &msg)
-{
-    ball_on_field[0] = msg->ball_on_field_x;
-    ball_on_field[1] = msg->ball_on_field_y;
-    ball_on_field[2] = msg->ball_on_field_theta;
-    ball_on_field[3] = msg->ball_on_field_dist;
-
-    ball_on_frame[0] = msg->ball_on_frame_x;
-    ball_on_frame[1] = msg->ball_on_frame_y;
-    ball_on_frame[2] = msg->ball_on_frame_theta;
-    ball_on_frame[3] = msg->ball_on_frame_dist;
-
-    ball_status = msg->ball_status;
-
-    obs_on_field = msg->obs_on_field;
+void CllbckBallSensor(const std_msgs::UInt8MultiArrayConstPtr &msg){
+    SetBallSensor(msg->data);
 }

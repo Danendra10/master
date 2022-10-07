@@ -1,6 +1,7 @@
 #ifndef MASTER_H_
 #define MASTER_H_
 
+#include "utils/utils.h"
 #include "ros/ros.h"
 #include "master/Vision.h"
 #include "geometry_msgs/Pose2D.h"
@@ -11,13 +12,15 @@
 #include "goalkeeper/goalkeeper.h"
 #include "comm/mc_in.h"
 #include "attacker/attacker.h"
-#include "utils/utils.h"
+#include "std_msgs/UInt8.h"
+#include "std_msgs/UInt8MultiArray.h"
 
 using namespace std;
 
 //=-----------------Global Variable-----------------=
 //===================================================
-extern int16_t pos_robot[3];
+extern float pos_robot[3];
+int16_t pos_robot_offset[3];
 
 
 //---Enumeration
@@ -70,11 +73,15 @@ ros::Timer tim_motor_control;
 ros::Subscriber sub_pc2bs;
 ros::Subscriber sub_vision_data;
 ros::Subscriber sub_odometry_data;
+ros::Subscriber sub_buttons;
+ros::Subscriber sub_ball_sensor;
+ros::Subscriber sub_line_sensor;
 
 
 //---Publisher---
 //===============
 ros::Publisher pub_vel_motor;
+ros::Publisher pub_offset_robot;
 
 //---BS data
 //==========
@@ -110,19 +117,26 @@ uint8_t robot_action;
 
 //---Ball's datas
 //==============
-float ball_on_field[4];
+extern float ball_on_field[4];
 float ball_on_frame[4];
-// vector<uint8_t> obs_on_field;
-uint8_t ball_status;
+extern uint8_t ball_status;
 
 //---Robot's datas
 //===============
 float robot_on_field[4];
 float robot_on_field_offset[4];
 
+extern std::vector<uint8_t> obs_on_field;
+extern uint8_t total_obs;
+
+//---STM Datas
+//============
+uint8_t button;
+
 
 
 /* Give the current real position from buffer positions */
+void SetPosOffset(int16_t x, int16_t y, int16_t th);
 void setOdometryBuffer(float _x, float _y, float _th);
 void SetPosXBuffer(float _val);
 void SetPosYBuffer(float _val);
@@ -134,6 +148,11 @@ void GetKeyboard();
 void loadConfig();
 uint8_t kbhit();
 
+/**
+ * @brief Will return a number from 0 - 7 based on the button pressed
+*/
+uint8_t GetButton();
+
 
 //--Ros Callback Prototypes
 //=========================
@@ -142,4 +161,7 @@ void CllbckVisionData(const master::VisionConstPtr &msg);
 void CllbckMotorControl(const ros::TimerEvent &msg);
 void CllbckPc2Bs(const comm::mc_inConstPtr &msg);
 void CllbckDecMaking(const ros::TimerEvent &msg);
+void CllbckButtons(const std_msgs::UInt8ConstPtr &msg);
+void CllbckLineSensor(const std_msgs::UInt8ConstPtr &msg);
+void CllbckBallSensor(const std_msgs::UInt8MultiArrayConstPtr &msg);
 #endif
