@@ -7,8 +7,6 @@
  * */
 
 //---Role Packages
-#include "goalkeeper/goalkeeper.h"
-#include "attacker/attacker.h"
 #include "ros/ros.h"
 #include "comm/mc_in.h"
 #include "master/BS_utils.h"
@@ -18,9 +16,6 @@
 #include <string.h>
 #include "ros/package.h"
 #include "std_msgs/Int16MultiArray.h"
-// coba coba
-int16_t dribble[2];
-ros::Publisher pub_dribble;
 
 using namespace std;
 
@@ -28,26 +23,24 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "decision_maker");
     ros::NodeHandle NH;
-    ros::MultiThreadedSpinner spinner(0); // Sementara hanya punya 2 callback
+    ros::MultiThreadedSpinner spinner(4); // Sementara hanya punya 2 callback
 
-    InitDefaultVar();
     tim_decision_making = NH.createTimer(ros::Duration(0.01), CllbckDecMaking);
-    // tim_10_hz = NH.createTimer(ros::Duration(0.1), Cllbck10Hz);
+    tim_10_hz = NH.createTimer(ros::Duration(0.1), Cllbck10Hz);
 
-    sub_pc2bs = NH.subscribe("bs2pc", 10, CllbckPc2Bs);
-    sub_vision_data = NH.subscribe("/vision_data", 16, CllbckVisionData);
-    sub_odometry_data = NH.subscribe("/odometry_data", 16, CllbckOdometryData);
-    sub_buttons = NH.subscribe("/button", 1, CllbckButtons);
-    sub_line_sensor = NH.subscribe("/line_sensor", 1, CllbckLineSensor);
-    sub_ball_sensor = NH.subscribe("/ball_sensor", 2, CllbckBallSensor);
+    sub_bs2pc = NH.subscribe("bs2pc", 10, CllbckBs2Pc);
+    sub_vision_data = NH.subscribe("/vision_data", 10, CllbckVisionData);
+    sub_stm_data = NH.subscribe("/odometry_data", 10, CllbckStm2Pc);
 
     // tim_motor_control = NH.createTimer(ros::Duration(0.02), CllbckMotorControl);
 
-    pub_vel_motor = NH.advertise<geometry_msgs::Twist>("/cmd_vel_motor", 16);
-    pub_offset_robot = NH.advertise<geometry_msgs::Pose2D>("/offset_robot", 16);
-    pub_buzzer = NH.advertise<std_msgs::UInt8MultiArray>("/buzzer", 2);
-    pub_dribble = NH.advertise<std_msgs::Int16MultiArray>("/dribble", 4);
-    pub_odometry = NH.advertise<geometry_msgs::Pose2D>("/odometry_robot", 8);
+    /**
+     * TODO: Get data from motion, pub in transmit all
+    */
+    pub_vel_motor = NH.advertise<geometry_msgs::Twist>("/cmd_vel_motor", 10);
+    pub_mc_out = NH.advertise<comm::mc_out>("mc_out", 10);
+    pub_pc2stm = NH.advertise<comm::pc2stm>("pc2stm", 10);
+    
 
     spinner.spin();
 
@@ -188,22 +181,12 @@ void SetOffsetRobotTh(float _val)
 
 void InitDefaultVar()
 {
-    // pos_robot_offset[0] = 0;
-    // pos_robot_offset[1] = 0;
-    // pos_robot_offset[2] = 0;
     robot_on_field_offset[0] = 0;
     robot_on_field_offset[1] = 0;
     robot_on_field_offset[2] = 0;
-    // gk_data.robot_x[1] = 0;
-    // gk_data.robot_y[1] = 0;
-    // gk_data.robot_th[1] = 90;
-    // gk_ret.vel_x_gain = 0;
-    // gk_ret.vel_y_gain = 0;
-    // gk_ret.vel_th_gain = 0;
-    // loadConfig();
 }
 
-void CllbckPc2Bs(const comm::mc_inConstPtr &msg)
+void CllbckBs2Pc(const comm::mc_inConstPtr &msg)
 {
     // Iam controlled by BS? (bit-selection)
     if ((msg->mux_control & robot_num_bin[robot_num]) >> (robot_num - 1))
@@ -211,37 +194,34 @@ void CllbckPc2Bs(const comm::mc_inConstPtr &msg)
         BS_manual = msg->base * 0.1;
         BS_auto_callib = msg->base % 10;
         BS_cmd = msg->command;
-        // cout << "BS_manual: " << BS_manual << endl;
-        // cout << "BS CMD: " << BS_cmd << endl;
         style = msg->style;
-
-        // printf("h_ac: %d %d\n", BS_manual, BS_auto_callib);
 
         manual_x_bs = (int)(msg->manual_x * 0.1);
         manual_y_bs = (int)(msg->manual_y * 0.1);
         manual_th_bs = (int)(msg->manual_th * 0.1);
         me_manual = ((msg->manual_x % 10) == robot_num);
 
-        // printf("manual: %d %d %d %d\n", me_manual, manual_x_bs, manual_y_bs, manual_th_bs);
-
-        // printf("normal: %d, manual: %d | no. %d\n", BS_manual, me_manual, (msg->manual_x % 10));
-
-        data_mux1 = msg->data_mux1;
-        data_mux2 = msg->data_mux2;
-
+        /**
+         * data is being devided by 6^x started from 0
+         * n_robot_active = how much active robot
+         * n_robot_near_ball = num of robot near ball
+         * n_robot_has_ball = num of robot has ball
+         * n_robot_pass = num of robot pass
+         * n_robot_recv = num of robot recv
+         */
         n_robot_aktif = msg->data_mux1 % 6;
         n_robot_dekat_bola = (int)(msg->data_mux1 * 0.1666666666) % 6;
         n_robot_dapat_bola = (int)(msg->data_mux1 * 0.02777777) % 6;
         n_robot_umpan = (int)(msg->data_mux1 * 0.0046296) % 6;
         n_robot_terima = (int)(msg->data_mux1 * 0.00077160493) % 6;
 
+        /**
+         * Switching role will be executed by BS
+         */
         n_defender_left = msg->data_mux2 % 6;
         n_defender_right = (int)(msg->data_mux2 * 0.1666666) % 6;
-        n_attacker_left = (int)(msg->data_mux2 * 0.02777777) % 6;
-        n_attacker_right = (int)(msg->data_mux2 * 0.0046296) % 6;
-
-        // printf("1: (%d) %d %d %d %d %d \n", msg->data_mux1, n_robot_aktif, n_robot_dekat_bola, n_robot_dapat_bola, n_robot_umpan, n_robot_terima);
-        // printf("2: (%d) %d %d %d %d\n", msg->data_mux2, n_defender_left, n_defender_right, n_attacker_left, n_attacker_right);
+        n_attacker = (int)(msg->data_mux2 * 0.02777777) % 6;
+        n_assist = (int)(msg->data_mux2 * 0.0046296) % 6;
 
         static uint8_t offset_me;
         static int16_t prev_offset_x = 0;
@@ -253,10 +233,7 @@ void CllbckPc2Bs(const comm::mc_inConstPtr &msg)
                 (prev_offset_x == 0 && msg->offset_x != 0) ||
             (prev_offset_y == 0 && msg->offset_y != 0) ||
             (prev_offset_th == 0 && msg->offset_th != 0))
-        {
-            // set offset..
-            // printf("BS menyuruh offset: %d %d %d\n", (int)(msg->offset_x * 0.1), (int)(msg->offset_y * 0.1), (int)(msg->offset_th * 0.1));
-        }
+            SetOffsetRobot((int)(msg->offset_x * 0.1), (int)(msg->offset_y * 0.1), (int)(msg->offset_th * 0.1));
 
         prev_offset_x = msg->offset_x;
         prev_offset_y = msg->offset_y;
@@ -266,41 +243,6 @@ void CllbckPc2Bs(const comm::mc_inConstPtr &msg)
 
 void GameProcess()
 {
-    switch (robot_role)
-    {
-    case 1:
-        // gk_data.game_status = 'K';
-        gk_data.robot_num = robot_num;
-        gk_data.robot_x[1] = robot_on_field[0];
-        gk_data.robot_y[1] = robot_on_field[1];
-        gk_data.robot_th[1] = robot_on_field[2];
-        gk_data.ball_x = ball_on_field[0];
-        gk_data.ball_y = ball_on_frame[1];
-        gk_data.game_status = game_status;
-        GkRun(&gk_data, &gk_ret);
-
-        // printf("GK RET: %f %f %f\n", gk_ret.vel_x_gain, gk_ret.vel_y_gain, gk_ret.vel_th_gain);
-
-        // printf("ret: %d %d %d\n", gk_ret.act_type, gk_ret.target_x, gk_ret.target_y);
-
-        // Ret send to Motion Control node
-
-        break;
-        // case 2:
-        //     att_data.robot_num = robot_num;
-        //     att_data.robot_x[1] = 12;
-        //     att_data.robot_y[1] = 32;
-        //     att_data.ball_x = 123;
-        //     att_data.ball_y = 234;
-        //     att_data.game_status = game_status;
-        //     att_run(&att_data, &robot_action);
-
-        //     // Ret send to Motion Control node
-
-        //     break;
-    }
-
-    // printf("robot_act: %d\n", robot_action);
 }
 
 void CllbckVisionData(const master::VisionConstPtr &msg)
@@ -318,11 +260,6 @@ void CllbckVisionData(const master::VisionConstPtr &msg)
     ball_status = msg->ball_status;
 
     obs_on_field = msg->obs_on_field;
-}
-
-void CllbckButtons(const std_msgs::UInt8ConstPtr &msg)
-{
-    button = msg->data;
 }
 
 uint8_t GetButton()
@@ -345,81 +282,15 @@ uint8_t GetButton()
         return 7;
 }
 
-void CllbckLineSensor(const std_msgs::UInt8ConstPtr &msg)
-{
-    // printf("line sensor: %d\n", msg->data);
-    SetLineSensor(msg->data);
-}
+// void CllbckLineSensor(const std_msgs::UInt8ConstPtr &msg)
+// {
+//     // printf("line sensor: %d\n", msg->data);
+//     SetLineSensor(msg->data);
+// }
 
 void CllbckDecMaking(const ros::TimerEvent &msg)
 {
-    // DribbleAcceleration(&dribble[0], -100, 20);
-    // DribbleAcceleration(&dribble[1], -100, 20);
-    // std_msgs::Int16MultiArray msg_dribble;
-    // msg_dribble.data.push_back(dribble[0]);
-    // msg_dribble.data.push_back(dribble[1]);
-    // pub_dribble.publish(msg_dribble);
-    // // printf("odom: %f %f %f\n", pos_robot[0], pos_robot[1], pos_robot[2]);
     // GetKeyboard();
-    // ObstacleCheck(90, 90, 300);
-    // if (GetButton() == 1)
-    // if(LeftLineSensorDetected())
-    // {
-
-    // }
-    // if(RightLineSensorDetected())
-    // {
-    //     printf("Right Line Sensor Detected\n");
-    // }
-    // if(LeftLineSensorDetected() && RightLineSensorDetected())
-    // {
-    //     printf("Both Line Sensor Detected\n");
-    // }
-    // geometry_msgs::Pose2D _offset;
-    // _offset.x = gk_data.robot_x[1];
-    // _offset.y = gk_data.robot_y[1];
-    // _offset.theta = gk_data.robot_th[1];
-    // pub_offset_robot.publish(_offset);
-    // geometry_msgs::Twist msg_vel;
-    // msg_vel.linear.x = gk_ret.vel_x_gain;
-    // msg_vel.linear.y = gk_ret.vel_y_gain;
-    // msg_vel.angular.z = gk_ret.vel_th_gain;
-    // printf("vel: %f %f %f\n", msg_vel.linear.x, msg_vel.linear.y, msg_vel.angular.z);
-    // pub_vel_motor.publish(msg_vel);
-
-    // std_msgs::UInt8MultiArray msg_buzzer;
-    // msg_buzzer.data.push_back(tim);
-    // msg_buzzer.data.push_back(tot);
-    // pub_buzzer.publish(msg_buzzer);
-
-    // printf("Pose robot: %f %f %f\n", pos_robot[0], pos_robot[1], pos_robot[2]);
-
-    // geometry_msgs::Pose2D pos_offset;
-    // pos_offset.x = robot_on_field_offset[0];
-    // pos_offset.y = robot_on_field_offset[1];
-    // pos_offset.theta = robot_on_field_offset[2];
-    // pub_offset_robot.publish(pos_offset);
-
-    // geometry_msgs::Pose2D msg_pos_robot;
-    // msg_pos_robot.x = pos_robot[0];
-    // msg_pos_robot.y = pos_robot[1];
-    // msg_pos_robot.theta = pos_robot[2];
-    // pub_odometry.publish(msg_pos_robot);
-
-    // ObstacleCheck(90, 90, 60);
-    // printf("Pos robot on dec maker : %d %d %d \n", pos_robot[0], pos_robot[1], pos_robot[2]);
-    // GetKeyboard();
-    // switch (BS_cmd)
-    // {
-    // case status_iddle:
-    //     printf("ini status iddle\n");
-    //     break;
-    // case status_callibration:
-    //     printf("ini status callibration\n");
-    //     break;
-    // default:
-    //     break;
-    // }
     static uint8_t prev_BS_cmd = 0;
     static uint8_t prev_prev_BS_cmd = 0;
     // command pertama pasti preparation tapi diawali dengan stop dari basestation
@@ -457,19 +328,14 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
         }
     }
 
-    printf("game_status: %d %d\n", game_status, robot_base_action);
+    transmitAll();
 
-    // game_status = 'K';
-    // printf("Ball sensors: %d %d\n", ball_sensor[0], ball_sensor[1]);
+    // printf("game_status: %d %d\n", game_status, robot_base_action);
 
     // GameProcess();
 }
 
-void CllbckBallSensor(const std_msgs::UInt8MultiArrayConstPtr &msg)
-{
-    SetBallSensor(msg->data);
-}
-
+//---TODO: taruh utils
 void buzzer(uint8_t time, uint8_t n)
 {
     tim = time;
@@ -490,3 +356,42 @@ void Cllbck10Hz(const ros::TimerEvent &msg)
 {
     BuzzerControl();
 }
+
+void CllbckStm2Pc(const comm::stm2pcConstPtr &msg)
+{
+    SetOdometryBuffer(msg->odom_buffer_x, msg->odom_buffer_y, msg->odom_buffer_th);
+}
+
+void transmitAll()
+{
+    comm::mc_out msg_mc_out;
+    msg_mc_out.pos_x = pos_robot[0];
+    msg_mc_out.pos_y = pos_robot[1];
+    msg_mc_out.theta = pos_robot[2];
+    msg_mc_out.ball_x = ball_on_field[0];
+    msg_mc_out.ball_y = ball_on_field[1];
+    msg_mc_out.ball_status = ball_status;
+    msg_mc_out.pass_target = 0;
+    msg_mc_out.robot_cond = robot_action;
+    pub_mc_out.publish(msg_mc_out);
+
+    comm::pc2stm msg_pc2stm;
+    msg_pc2stm.buzzer_cnt = buzzer_cnt;
+    msg_pc2stm.buzzer_time = buzzer_time;
+    msg_pc2stm.kicker_mode = kicker_mode;
+    msg_pc2stm.kicker_position = kicker_position;
+    msg_pc2stm.kicker_power = kicker_power;
+    msg_pc2stm.odom_offset_th = odom_offset_th;
+    msg_pc2stm.odom_offset_x = odom_offset_x;
+    msg_pc2stm.odom_offset_y = odom_offset_y;
+    pub_pc2stm.publish(msg_pc2stm);
+}
+// void CllbckButtons(const std_msgs::UInt8ConstPtr &msg)
+// {
+//     button = msg->data;
+// }
+
+// void CllbckBallSensor(const std_msgs::UInt8MultiArrayConstPtr &msg)
+// {
+//     SetBallSensor(msg->data);
+// }

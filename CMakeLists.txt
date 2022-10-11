@@ -14,11 +14,13 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   dynamic_reconfigure
   comm
-  goalkeeper
-  attacker
-  # assist
-  # defender
+  motion
+  multirole_func
   utils
+  goalkeeper
+  assist
+  defender
+  attacker
 )
 
 find_package(yaml-cpp REQUIRED)
@@ -50,6 +52,6 @@ add_library(master_lib src/init.cpp)
 
 target_link_libraries(master_lib ${YAML_CPP_LIBRARIES} ${catkin_LIBRARIES})
 
-add_executable(decision_maker src/decision_maker.cpp )
-add_dependencies(decision_maker ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(decision_maker ${catkin_LIBRARIES} goalkeeper_lib attacker_lib utils_lib)
+add_executable(${PROJECT_NAME} src/${PROJECT_NAME}.cpp )
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} multirole_func_lib motion_lib utils_lib goalkeeper_lib defender_lib assist_lib attacker_lib)

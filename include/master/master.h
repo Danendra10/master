@@ -1,19 +1,24 @@
 #ifndef MASTER_H_
 #define MASTER_H_
 
-#include "utils/utils.h"
 #include "ros/ros.h"
 #include "master/Vision.h"
 #include "geometry_msgs/Pose2D.h"
 #include "geometry_msgs/Twist.h"
 #include <termios.h>
 #include <sys/ioctl.h>
+
+//---Vision
 #include "master/Vision.h"
-#include "goalkeeper/goalkeeper.h"
+
+//---Role Switching
+#include "multirole_func/multirole_func.h"
+
+//---Communication
 #include "comm/mc_in.h"
-#include "attacker/attacker.h"
-#include "std_msgs/UInt8.h"
-#include "std_msgs/UInt8MultiArray.h"
+#include "comm/mc_out.h"
+#include "comm/stm2pc.h"
+#include "comm/pc2stm.h"
 
 using namespace std;
 
@@ -21,47 +26,6 @@ using namespace std;
 //===================================================
 extern float pos_robot[3];
 int16_t pos_robot_offset[3];
-
-//---Enumeration
-//==============
-
-enum robot_state
-{
-    //---General Cmd
-    status_iddle = 83,   // S | 0x53
-    status_iddle_2 = 32, // Space | 0x20
-    status_start = 115,  // s | 0x73
-
-    //---Home Cmd
-    status_preparation_kickoff_home = 75,     // K | 0x4B
-    status_preparation_freekick_home = 70,    // F | 0x46
-    status_preparation_goalkick_home = 71,    // G | 0x47
-    status_preparation_cornerkick_home = 67,  // C | 0x43
-    status_preparation_penaltykick_home = 80, // P | 0x50
-    status_preparation_throwin_home = 84,     // T | 0x54
-
-    //---All Cmd
-    status_preparation_dropball = 78, // N | 0x4E
-    status_callibration = 35,         // # | 0x23
-    status_park = 76,                 // L | 0x4C
-
-    //---Away Cmd
-    status_preparation_kickoff_away = 107,     // k | 0x6B
-    status_preparation_freekick_away = 102,    // f | 0x66
-    status_preparation_goalkick_away = 103,    // g | 0x67
-    status_preparation_cornerkick_away = 99,   // c | 0x63
-    status_preparation_penaltykick_away = 112, // p | 0x70
-    status_preparation_throwin_away = 116,     // t | 0x74
-
-    //---Keyboard Manual
-    status_keyboard_maju = 106,        // j | 0x6A
-    status_keyboard_kiri = 98,         // b | 0x62
-    status_keyboard_mundur = 110,      // n | 0x6E
-    status_keyboard_kanan = 109,       // m | 0x6D
-    status_keyboard_rotasi_kanan = 48, // 0 | 0x30
-    status_keyboard_rotasi_kiri = 57,  // 9 | 0x39
-
-};
 
 //---Timer
 //========
@@ -71,19 +35,16 @@ ros::Timer tim_10_hz;
 
 //---Subscriber---
 //================
-ros::Subscriber sub_pc2bs;
+ros::Subscriber sub_bs2pc;
 ros::Subscriber sub_vision_data;
-ros::Subscriber sub_odometry_data;
-ros::Subscriber sub_buttons;
-ros::Subscriber sub_ball_sensor;
-ros::Subscriber sub_line_sensor;
+ros::Subscriber sub_stm_data;
+
 
 //---Publisher---
 //===============
 ros::Publisher pub_vel_motor;
-ros::Publisher pub_offset_robot;
-ros::Publisher pub_buzzer;
-ros::Publisher pub_odometry;
+ros::Publisher pub_mc_out;
+ros::Publisher pub_pc2stm;
 
 //---BS data
 //==========
@@ -108,16 +69,21 @@ uint8_t n_robot_terima;
 
 uint8_t n_defender_left;
 uint8_t n_defender_right;
-uint8_t n_attacker_left;
-uint8_t n_attacker_right;
+uint8_t n_attacker;
+uint8_t n_assist;
 
 uint8_t robot_base_action;
 
-//---Multirole data
-//=================
-gk_data_t gk_data;
-gk_ret_t gk_ret;
-att_data_t att_data;
+//---Pc2STM
+//=========
+int16_t odom_offset_x;
+int16_t odom_offset_y;
+int16_t odom_offset_th;
+uint8_t kicker_mode;
+uint8_t kicker_power;
+uint16_t kicker_position;
+uint8_t buzzer_cnt;
+uint8_t buzzer_time;
 
 //---Data sintetis sementara
 //==========================
@@ -153,6 +119,13 @@ uint8_t tot;
 /* Give the current real position from buffer positions */
 uint16_t pos_buffer[3];
 
+MultiRole roles[] =
+    {
+        GkRun,
+        AttRun,
+        DefRun,
+        AssistRun};
+
 void SetPosOffset(int16_t x, int16_t y, int16_t th);
 void SetOdometryBuffer(float _x, float _y, float _th);
 void SetPosXBuffer(float _val);
@@ -176,16 +149,14 @@ uint8_t kbhit();
 uint8_t GetButton();
 void buzzer(uint8_t time, uint8_t n);
 void BuzzerControl();
+void transmitAll();
 
 //--Ros Callback Prototypes
 //=========================
-void CllbckOdometryData(const geometry_msgs::Pose2DConstPtr &msg);
-void CllbckVisionData(const master::VisionConstPtr &msg);
 void CllbckMotorControl(const ros::TimerEvent &msg);
-void Cllbck10Hz(const ros::TimerEvent &msg);
-void CllbckPc2Bs(const comm::mc_inConstPtr &msg);
 void CllbckDecMaking(const ros::TimerEvent &msg);
-void CllbckButtons(const std_msgs::UInt8ConstPtr &msg);
-void CllbckLineSensor(const std_msgs::UInt8ConstPtr &msg);
-void CllbckBallSensor(const std_msgs::UInt8MultiArrayConstPtr &msg);
+void CllbckVisionData(const master::VisionConstPtr &msg);
+void Cllbck10Hz(const ros::TimerEvent &msg);
+void CllbckBs2Pc(const comm::mc_inConstPtr &msg);
+void CllbckStm2Pc(const comm::stm2pcConstPtr &msg);
 #endif
