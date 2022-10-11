@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 
     InitDefaultVar();
     tim_decision_making = NH.createTimer(ros::Duration(0.01), CllbckDecMaking);
-    tim_10_hz = NH.createTimer(ros::Duration(0.1), Cllbck10Hz);
+    // tim_10_hz = NH.createTimer(ros::Duration(0.1), Cllbck10Hz);
 
     sub_pc2bs = NH.subscribe("bs2pc", 10, CllbckPc2Bs);
     sub_vision_data = NH.subscribe("/vision_data", 16, CllbckVisionData);
@@ -194,12 +194,12 @@ void InitDefaultVar()
     robot_on_field_offset[0] = 0;
     robot_on_field_offset[1] = 0;
     robot_on_field_offset[2] = 0;
-    gk_data.robot_x[1] = 0;
-    gk_data.robot_y[1] = 0;
-    gk_data.robot_th[1] = 90;
-    gk_ret.vel_x_gain = 0;
-    gk_ret.vel_y_gain = 0;
-    gk_ret.vel_th_gain = 0;
+    // gk_data.robot_x[1] = 0;
+    // gk_data.robot_y[1] = 0;
+    // gk_data.robot_th[1] = 90;
+    // gk_ret.vel_x_gain = 0;
+    // gk_ret.vel_y_gain = 0;
+    // gk_ret.vel_th_gain = 0;
     // loadConfig();
 }
 
@@ -208,36 +208,59 @@ void CllbckPc2Bs(const comm::mc_inConstPtr &msg)
     // Iam controlled by BS? (bit-selection)
     if ((msg->mux_control & robot_num_bin[robot_num]) >> (robot_num - 1))
     {
-        BS_normal = msg->base * 0.1;
+        BS_manual = msg->base * 0.1;
         BS_auto_callib = msg->base % 10;
         BS_cmd = msg->command;
-        cout << "BS_normal: " << BS_normal << endl;
-        cout << "BS CMD: " << BS_cmd << endl;
+        // cout << "BS_manual: " << BS_manual << endl;
+        // cout << "BS CMD: " << BS_cmd << endl;
         style = msg->style;
 
-        manual_x_bs = msg->manual_x;
-        manual_y_bs = msg->manual_y;
-        manual_th_bs = msg->manual_th;
-        me_manual = (msg->manual_x % 10 && robot_num);
+        // printf("h_ac: %d %d\n", BS_manual, BS_auto_callib);
+
+        manual_x_bs = (int)(msg->manual_x * 0.1);
+        manual_y_bs = (int)(msg->manual_y * 0.1);
+        manual_th_bs = (int)(msg->manual_th * 0.1);
+        me_manual = ((msg->manual_x % 10) == robot_num);
+
+        // printf("manual: %d %d %d %d\n", me_manual, manual_x_bs, manual_y_bs, manual_th_bs);
+
+        // printf("normal: %d, manual: %d | no. %d\n", BS_manual, me_manual, (msg->manual_x % 10));
 
         data_mux1 = msg->data_mux1;
         data_mux2 = msg->data_mux2;
-        mux_control = msg->mux_control;
+
+        n_robot_aktif = msg->data_mux1 % 6;
+        n_robot_dekat_bola = (int)(msg->data_mux1 * 0.1666666666) % 6;
+        n_robot_dapat_bola = (int)(msg->data_mux1 * 0.02777777) % 6;
+        n_robot_umpan = (int)(msg->data_mux1 * 0.0046296) % 6;
+        n_robot_terima = (int)(msg->data_mux1 * 0.00077160493) % 6;
+
+        n_defender_left = msg->data_mux2 % 6;
+        n_defender_right = (int)(msg->data_mux2 * 0.1666666) % 6;
+        n_attacker_left = (int)(msg->data_mux2 * 0.02777777) % 6;
+        n_attacker_right = (int)(msg->data_mux2 * 0.0046296) % 6;
+
+        // printf("1: (%d) %d %d %d %d %d \n", msg->data_mux1, n_robot_aktif, n_robot_dekat_bola, n_robot_dapat_bola, n_robot_umpan, n_robot_terima);
+        // printf("2: (%d) %d %d %d %d\n", msg->data_mux2, n_defender_left, n_defender_right, n_attacker_left, n_attacker_right);
 
         static uint8_t offset_me;
-        static int16_t prev_offset_x;
-        static int16_t prev_offset_y;
-        static int16_t prev_offset_th;
+        static int16_t prev_offset_x = 0;
+        static int16_t prev_offset_y = 0;
+        static int16_t prev_offset_th = 0;
 
-        offset_me = msg->offset_x % 10;
-        if ((offset_me == robot_num) &&
-            (prev_offset_x == 0 && msg->offset_x != 0) &&
-            (prev_offset_y == 0 && msg->offset_y != 0) &&
+        offset_me = ((msg->offset_x % 10) == robot_num);
+        if (offset_me &&
+                (prev_offset_x == 0 && msg->offset_x != 0) ||
+            (prev_offset_y == 0 && msg->offset_y != 0) ||
             (prev_offset_th == 0 && msg->offset_th != 0))
         {
             // set offset..
-            // printf("BS menyuruh offset\n");
+            // printf("BS menyuruh offset: %d %d %d\n", (int)(msg->offset_x * 0.1), (int)(msg->offset_y * 0.1), (int)(msg->offset_th * 0.1));
         }
+
+        prev_offset_x = msg->offset_x;
+        prev_offset_y = msg->offset_y;
+        prev_offset_th = msg->offset_th;
     }
 }
 
@@ -330,15 +353,15 @@ void CllbckLineSensor(const std_msgs::UInt8ConstPtr &msg)
 
 void CllbckDecMaking(const ros::TimerEvent &msg)
 {
-    DribbleAcceleration(&dribble[0], -100, 20);
-    DribbleAcceleration(&dribble[1], -100, 20);
-    std_msgs::Int16MultiArray msg_dribble;
-    msg_dribble.data.push_back(dribble[0]);
-    msg_dribble.data.push_back(dribble[1]);
-    pub_dribble.publish(msg_dribble);
-    // printf("odom: %f %f %f\n", pos_robot[0], pos_robot[1], pos_robot[2]);
-    GetKeyboard();
-    ObstacleCheck(90, 90, 300);
+    // DribbleAcceleration(&dribble[0], -100, 20);
+    // DribbleAcceleration(&dribble[1], -100, 20);
+    // std_msgs::Int16MultiArray msg_dribble;
+    // msg_dribble.data.push_back(dribble[0]);
+    // msg_dribble.data.push_back(dribble[1]);
+    // pub_dribble.publish(msg_dribble);
+    // // printf("odom: %f %f %f\n", pos_robot[0], pos_robot[1], pos_robot[2]);
+    // GetKeyboard();
+    // ObstacleCheck(90, 90, 300);
     // if (GetButton() == 1)
     // if(LeftLineSensorDetected())
     // {
@@ -357,31 +380,31 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
     // _offset.y = gk_data.robot_y[1];
     // _offset.theta = gk_data.robot_th[1];
     // pub_offset_robot.publish(_offset);
-    geometry_msgs::Twist msg_vel;
-    msg_vel.linear.x = gk_ret.vel_x_gain;
-    msg_vel.linear.y = gk_ret.vel_y_gain;
-    msg_vel.angular.z = gk_ret.vel_th_gain;
+    // geometry_msgs::Twist msg_vel;
+    // msg_vel.linear.x = gk_ret.vel_x_gain;
+    // msg_vel.linear.y = gk_ret.vel_y_gain;
+    // msg_vel.angular.z = gk_ret.vel_th_gain;
     // printf("vel: %f %f %f\n", msg_vel.linear.x, msg_vel.linear.y, msg_vel.angular.z);
-    pub_vel_motor.publish(msg_vel);
+    // pub_vel_motor.publish(msg_vel);
 
-    std_msgs::UInt8MultiArray msg_buzzer;
-    msg_buzzer.data.push_back(tim);
-    msg_buzzer.data.push_back(tot);
-    pub_buzzer.publish(msg_buzzer);
+    // std_msgs::UInt8MultiArray msg_buzzer;
+    // msg_buzzer.data.push_back(tim);
+    // msg_buzzer.data.push_back(tot);
+    // pub_buzzer.publish(msg_buzzer);
 
     // printf("Pose robot: %f %f %f\n", pos_robot[0], pos_robot[1], pos_robot[2]);
 
-    geometry_msgs::Pose2D pos_offset;
-    pos_offset.x = robot_on_field_offset[0];
-    pos_offset.y = robot_on_field_offset[1];
-    pos_offset.theta =  robot_on_field_offset[2];
-    pub_offset_robot.publish(pos_offset);
+    // geometry_msgs::Pose2D pos_offset;
+    // pos_offset.x = robot_on_field_offset[0];
+    // pos_offset.y = robot_on_field_offset[1];
+    // pos_offset.theta = robot_on_field_offset[2];
+    // pub_offset_robot.publish(pos_offset);
 
-    geometry_msgs::Pose2D msg_pos_robot;
-    msg_pos_robot.x = pos_robot[0];
-    msg_pos_robot.y = pos_robot[1];
-    msg_pos_robot.theta = pos_robot[2];
-    pub_odometry.publish(msg_pos_robot);
+    // geometry_msgs::Pose2D msg_pos_robot;
+    // msg_pos_robot.x = pos_robot[0];
+    // msg_pos_robot.y = pos_robot[1];
+    // msg_pos_robot.theta = pos_robot[2];
+    // pub_odometry.publish(msg_pos_robot);
 
     // ObstacleCheck(90, 90, 60);
     // printf("Pos robot on dec maker : %d %d %d \n", pos_robot[0], pos_robot[1], pos_robot[2]);
@@ -401,50 +424,45 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
     static uint8_t prev_prev_BS_cmd = 0;
     // command pertama pasti preparation tapi diawali dengan stop dari basestation
     // command kedua bisa jadi start atau stop
-    // if(prev_BS_cmd != BS_cmd && BS_cmd != status_iddle && BS_cmd != status_start)
-    //     game_status = BS_cmd;
-    // if(prev_prev_BS_cmd != BS_cmd && BS_cmd == status_start)
-    //     game_status += 128;
-    // if(BS_cmd == status_iddle)
-    //     game_status = BS_cmd;
-    // prev_prev_BS_cmd = prev_BS_cmd;
-    // prev_BS_cmd = BS_cmd;
-    // if (BS_normal)
-    // {
-
-    // Prep..
-    if (prev_BS_cmd != BS_cmd && BS_cmd != 's' && BS_cmd != 'S')
+    if (!BS_manual)
     {
-        game_status = BS_cmd;
+        if (prev_BS_cmd != BS_cmd)
+        {
+            if (BS_cmd == 's')
+            {
+                if (game_status > 0 && game_status <= 127)
+                    game_status += 128;
+                robot_base_action = 1;
+            }
+            else if (BS_cmd == 'S')
+            {
+                if (game_status > 127 && game_status <= 255)
+                    game_status -= 128;
+                robot_base_action = 0;
+            }
+            else
+            {
+                game_status = BS_cmd;
+                robot_base_action = 1;
+            }
+        }
+        prev_BS_cmd = BS_cmd;
+    }
+    else
+    {
+        if (me_manual)
+        {
+            // ....
+            printf("Aku manual..\n");
+        }
     }
 
-    // Start
-    if (prev_BS_cmd != BS_cmd && BS_cmd == 's')
-    {
-        // Safety tambahan ketika belum prep
-        if (game_status > 0 && game_status <= 127)
-            game_status += 128;
-    }
+    printf("game_status: %d %d\n", game_status, robot_base_action);
 
-    // Stop
-    if (prev_BS_cmd != BS_cmd && BS_cmd == 'S')
-    {
-        game_status = status_iddle;
-    }
-    prev_prev_BS_cmd = prev_BS_cmd;
-    prev_BS_cmd = BS_cmd;
-    // }
-    // else
-    // {
-    //     if (me_manual == robot_num)
-    //     {
-    //         // ....
-    // printf("Aku manual..\n");
-    //     }
-    // }
     // game_status = 'K';
     // printf("Ball sensors: %d %d\n", ball_sensor[0], ball_sensor[1]);
-    GameProcess();
+
+    // GameProcess();
 }
 
 void CllbckBallSensor(const std_msgs::UInt8MultiArrayConstPtr &msg)

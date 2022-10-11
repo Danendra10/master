@@ -88,7 +88,7 @@ ros::Publisher pub_odometry;
 //---BS data
 //==========
 uint8_t status_control_BS;
-uint8_t BS_normal;
+uint8_t BS_manual;
 uint8_t BS_auto_callib;
 uint8_t BS_cmd;
 uint8_t style;
@@ -99,6 +99,19 @@ uint16_t data_mux1;
 uint16_t data_mux2;
 uint16_t mux_control;
 uint8_t me_manual;
+
+uint8_t n_robot_aktif;
+uint8_t n_robot_dekat_bola;
+uint8_t n_robot_dapat_bola;
+uint8_t n_robot_umpan;
+uint8_t n_robot_terima;
+
+uint8_t n_defender_left;
+uint8_t n_defender_right;
+uint8_t n_attacker_left;
+uint8_t n_attacker_right;
+
+uint8_t robot_base_action;
 
 //---Multirole data
 //=================
