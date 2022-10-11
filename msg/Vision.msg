@@ -9,5 +9,5 @@ float32 ball_on_field_theta
 float32 ball_on_field_dist
 uint8 ball_status
 
-uint8[] obs_on_field
+uint16[] obs_on_field
 uint8[] obs_limit

@@ -17,6 +17,10 @@
 #include <chrono>
 #include <string.h>
 #include "ros/package.h"
+#include "std_msgs/Int16MultiArray.h"
+// coba coba
+int16_t dribble[2];
+ros::Publisher pub_dribble;
 
 using namespace std;
 
@@ -28,6 +32,7 @@ int main(int argc, char **argv)
 
     InitDefaultVar();
     tim_decision_making = NH.createTimer(ros::Duration(0.01), CllbckDecMaking);
+    tim_10_hz = NH.createTimer(ros::Duration(0.1), Cllbck10Hz);
 
     sub_pc2bs = NH.subscribe("bs2pc", 10, CllbckPc2Bs);
     sub_vision_data = NH.subscribe("/vision_data", 16, CllbckVisionData);
@@ -40,6 +45,9 @@ int main(int argc, char **argv)
 
     pub_vel_motor = NH.advertise<geometry_msgs::Twist>("/cmd_vel_motor", 16);
     pub_offset_robot = NH.advertise<geometry_msgs::Pose2D>("/offset_robot", 16);
+    pub_buzzer = NH.advertise<std_msgs::UInt8MultiArray>("/buzzer", 2);
+    pub_dribble = NH.advertise<std_msgs::Int16MultiArray>("/dribble", 4);
+    pub_odometry = NH.advertise<geometry_msgs::Pose2D>("/odometry_robot", 8);
 
     spinner.spin();
 
@@ -105,10 +113,11 @@ void GetKeyboard()
             BS_cmd = status_keyboard_rotasi_kiri;
             break;
         case ' ':
-            BS_cmd = status_iddle_2;
+            // BS_cmd = status_iddle_2;
+            SetOffsetRobot(0, 0, 100);
             break;
         case 'o':
-            SetPosOffset(0, 0, 90);
+            buzzer(10, 100);
             break;
         }
     }
@@ -117,11 +126,6 @@ void GetKeyboard()
 void SetPosOffset(int16_t x, int16_t y, int16_t th)
 {
     printf("KENEK\n");
-    geometry_msgs::Pose2D pos_offset;
-    pos_offset.x = x;
-    pos_offset.y = y;
-    pos_offset.theta = th;
-    pub_offset_robot.publish(pos_offset);
 }
 
 void CllbckMotorControl(const ros::TimerEvent &msg)
@@ -130,26 +134,56 @@ void CllbckMotorControl(const ros::TimerEvent &msg)
 
 void CllbckOdometryData(const geometry_msgs::Pose2DConstPtr &msg)
 {
-    setOdometryBuffer(msg->x, msg->y, msg->theta);
+    SetOdometryBuffer(msg->x, msg->y, msg->theta);
 }
 
-void setOdometryBuffer(float _x, float _y, float _theta)
+void SetOdometryBuffer(float _x, float _y, float _theta)
 {
     SetPosXBuffer(_x);
     SetPosYBuffer(_y);
     SetPosThBuffer(_theta);
 }
 
-void SetPosXBuffer(float _val) { pos_robot[0] = _val - robot_on_field_offset[0]; }
-void SetPosYBuffer(float _val) { pos_robot[1] = _val - robot_on_field_offset[1]; }
+void SetPosXBuffer(float _val)
+{
+    pos_buffer[0] = _val;
+    pos_robot[0] = pos_buffer[0] - robot_on_field_offset[0];
+}
+void SetPosYBuffer(float _val)
+{
+    pos_buffer[1] = _val;
+    pos_robot[1] = pos_buffer[1] - robot_on_field_offset[1];
+}
 void SetPosThBuffer(float _val)
 {
-    pos_robot[2] *= -1;
-    pos_robot[2] = _val - robot_on_field_offset[2];
+    pos_buffer[2] = _val;
+    pos_robot[2] = robot_on_field_offset[2] - pos_buffer[2];
     while (pos_robot[2] > 180)
         pos_robot[2] -= 360;
     while (pos_robot[2] < -180)
         pos_robot[2] += 360;
+}
+void SetOffsetRobot(float _x, float _y, float _th)
+{
+    SetOffsetRobotX(_x);
+    SetOffsetRobotY(_y);
+    SetOffsetRobotTh(_th);
+}
+void SetOffsetRobotX(float _val)
+{
+    robot_on_field_offset[0] = pos_buffer[0] - _val;
+}
+void SetOffsetRobotY(float _val)
+{
+    robot_on_field_offset[1] = pos_buffer[1] - _val;
+}
+void SetOffsetRobotTh(float _val)
+{
+    robot_on_field_offset[2] = pos_buffer[2] + _val;
+    while (robot_on_field_offset[2] > 180)
+        robot_on_field_offset[2] -= 360;
+    while (robot_on_field_offset[2] < -180)
+        robot_on_field_offset[2] += 360;
 }
 
 void InitDefaultVar()
@@ -263,51 +297,61 @@ void CllbckVisionData(const master::VisionConstPtr &msg)
     obs_on_field = msg->obs_on_field;
 }
 
-void CllbckButtons(const std_msgs::UInt8ConstPtr &msg){
+void CllbckButtons(const std_msgs::UInt8ConstPtr &msg)
+{
     button = msg->data;
 }
 
 uint8_t GetButton()
 {
-    if((button & 0x01) != 0x01)
+    if ((button & 0x01) != 0x01)
         return 0;
-    if((button & 0x02) != 0x02)
+    if ((button & 0x02) != 0x02)
         return 1;
-    if((button & 0x04) != 0x04)
+    if ((button & 0x04) != 0x04)
         return 2;
-    if((button & 0x08) != 0x08)
+    if ((button & 0x08) != 0x08)
         return 3;
-    if((button & 0x10) != 0x10)
+    if ((button & 0x10) != 0x10)
         return 4;
-    if((button & 0x20) != 0x20)
+    if ((button & 0x20) != 0x20)
         return 5;
-    if((button & 0x40) != 0x40)
+    if ((button & 0x40) != 0x40)
         return 6;
-    if((button & 0x80) != 0x80)
+    if ((button & 0x80) != 0x80)
         return 7;
 }
 
-void CllbckLineSensor(const std_msgs::UInt8ConstPtr &msg){
+void CllbckLineSensor(const std_msgs::UInt8ConstPtr &msg)
+{
     // printf("line sensor: %d\n", msg->data);
     SetLineSensor(msg->data);
 }
 
 void CllbckDecMaking(const ros::TimerEvent &msg)
 {
+    DribbleAcceleration(&dribble[0], -100, 20);
+    DribbleAcceleration(&dribble[1], -100, 20);
+    std_msgs::Int16MultiArray msg_dribble;
+    msg_dribble.data.push_back(dribble[0]);
+    msg_dribble.data.push_back(dribble[1]);
+    pub_dribble.publish(msg_dribble);
     // printf("odom: %f %f %f\n", pos_robot[0], pos_robot[1], pos_robot[2]);
     GetKeyboard();
-    if(LeftLineSensorDetected())
-    {
-        printf("Left Line Sensor Detected\n");
-    }
-    if(RightLineSensorDetected())
-    {
-        printf("Right Line Sensor Detected\n");
-    }
-    if(LeftLineSensorDetected() && RightLineSensorDetected())
-    {
-        printf("Both Line Sensor Detected\n");
-    }
+    ObstacleCheck(90, 90, 300);
+    // if (GetButton() == 1)
+    // if(LeftLineSensorDetected())
+    // {
+
+    // }
+    // if(RightLineSensorDetected())
+    // {
+    //     printf("Right Line Sensor Detected\n");
+    // }
+    // if(LeftLineSensorDetected() && RightLineSensorDetected())
+    // {
+    //     printf("Both Line Sensor Detected\n");
+    // }
     // geometry_msgs::Pose2D _offset;
     // _offset.x = gk_data.robot_x[1];
     // _offset.y = gk_data.robot_y[1];
@@ -319,6 +363,25 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
     msg_vel.angular.z = gk_ret.vel_th_gain;
     // printf("vel: %f %f %f\n", msg_vel.linear.x, msg_vel.linear.y, msg_vel.angular.z);
     pub_vel_motor.publish(msg_vel);
+
+    std_msgs::UInt8MultiArray msg_buzzer;
+    msg_buzzer.data.push_back(tim);
+    msg_buzzer.data.push_back(tot);
+    pub_buzzer.publish(msg_buzzer);
+
+    // printf("Pose robot: %f %f %f\n", pos_robot[0], pos_robot[1], pos_robot[2]);
+
+    geometry_msgs::Pose2D pos_offset;
+    pos_offset.x = robot_on_field_offset[0];
+    pos_offset.y = robot_on_field_offset[1];
+    pos_offset.theta =  robot_on_field_offset[2];
+    pub_offset_robot.publish(pos_offset);
+
+    geometry_msgs::Pose2D msg_pos_robot;
+    msg_pos_robot.x = pos_robot[0];
+    msg_pos_robot.y = pos_robot[1];
+    msg_pos_robot.theta = pos_robot[2];
+    pub_odometry.publish(msg_pos_robot);
 
     // ObstacleCheck(90, 90, 60);
     // printf("Pos robot on dec maker : %d %d %d \n", pos_robot[0], pos_robot[1], pos_robot[2]);
@@ -380,10 +443,32 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
     //     }
     // }
     // game_status = 'K';
-    printf("Ball sensors: %d %d\n", ball_sensor[0], ball_sensor[1]);
+    // printf("Ball sensors: %d %d\n", ball_sensor[0], ball_sensor[1]);
     GameProcess();
 }
 
-void CllbckBallSensor(const std_msgs::UInt8MultiArrayConstPtr &msg){
+void CllbckBallSensor(const std_msgs::UInt8MultiArrayConstPtr &msg)
+{
     SetBallSensor(msg->data);
+}
+
+void buzzer(uint8_t time, uint8_t n)
+{
+    tim = time;
+    tot = n;
+    tim_10_hz.start();
+}
+
+void BuzzerControl()
+{
+    if ((tim != 0) || (tot != 0))
+    {
+        buzzer(0, 0);
+    }
+    tim_10_hz.stop();
+}
+
+void Cllbck10Hz(const ros::TimerEvent &msg)
+{
+    BuzzerControl();
 }
