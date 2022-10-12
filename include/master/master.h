@@ -7,6 +7,7 @@
 #include "geometry_msgs/Twist.h"
 #include <termios.h>
 #include <sys/ioctl.h>
+#include <string.h>
 
 //---Vision
 #include "master/Vision.h"
@@ -14,11 +15,18 @@
 //---Role Switching
 #include "multirole_func/multirole_func.h"
 
+//---Motion
+#include "motion/motion.h"
+
 //---Communication
 #include "comm/mc_in.h"
 #include "comm/mc_out.h"
 #include "comm/stm2pc.h"
 #include "comm/pc2stm.h"
+
+//---Redis Cpp
+// #include <redis-cpp/stream.h>
+// #include <redis-cpp/execute.h>
 
 using namespace std;
 
@@ -61,7 +69,7 @@ uint16_t data_mux2;
 uint16_t mux_control;
 uint8_t me_manual;
 
-uint8_t n_robot_aktif;
+uint8_t n_active_robot;
 uint8_t n_robot_dekat_bola;
 uint8_t n_robot_dapat_bola;
 uint8_t n_robot_umpan;
@@ -150,6 +158,7 @@ uint8_t GetButton();
 void buzzer(uint8_t time, uint8_t n);
 void BuzzerControl();
 void transmitAll();
+int getDataByKey(std::string key);
 
 //--Ros Callback Prototypes
 //=========================

@@ -88,26 +88,26 @@ void GetKeyboard()
             BS_cmd = status_preparation_kickoff_home;
             break;
         case 'j':
-            BS_cmd = status_keyboard_maju;
+            BS_cmd = keyboard_forward;
             break;
         case 'b':
-            BS_cmd = status_keyboard_kiri;
+            BS_cmd = keyboard_left;
             break;
         case 'n':
-            BS_cmd = status_keyboard_mundur;
+            BS_cmd = keyboard_backward;
             break;
         case 'm':
-            BS_cmd = status_keyboard_kanan;
+            BS_cmd = keyboard_right;
             break;
         case '0':
-            BS_cmd = status_keyboard_rotasi_kanan;
+            BS_cmd = keyboard_right_rotation;
             break;
         case '9':
-            BS_cmd = status_keyboard_rotasi_kiri;
+            BS_cmd = keyboard_left_rotation;
             break;
         case ' ':
-            // BS_cmd = status_iddle_2;
-            SetOffsetRobot(0, 0, 100);
+            BS_cmd = status_iddle_2;
+            // SetOffsetRobot(0, 0, 100);
             break;
         case 'o':
             buzzer(10, 100);
@@ -196,6 +196,9 @@ void CllbckBs2Pc(const comm::mc_inConstPtr &msg)
         BS_cmd = msg->command;
         style = msg->style;
 
+        ball_on_field[0] = (ball_on_field[0] * ball_status) + (msg->ball_x_field * (1 - ball_status));
+        ball_on_field[1] = (ball_on_field[1] * ball_status) + (msg->ball_y_field * (1 - ball_status));
+
         manual_x_bs = (int)(msg->manual_x * 0.1);
         manual_y_bs = (int)(msg->manual_y * 0.1);
         manual_th_bs = (int)(msg->manual_th * 0.1);
@@ -209,7 +212,7 @@ void CllbckBs2Pc(const comm::mc_inConstPtr &msg)
          * n_robot_pass = num of robot pass
          * n_robot_recv = num of robot recv
          */
-        n_robot_aktif = msg->data_mux1 % 6;
+        n_active_robot = msg->data_mux1 % 6;
         n_robot_dekat_bola = (int)(msg->data_mux1 * 0.1666666666) % 6;
         n_robot_dapat_bola = (int)(msg->data_mux1 * 0.02777777) % 6;
         n_robot_umpan = (int)(msg->data_mux1 * 0.0046296) % 6;
@@ -290,7 +293,8 @@ uint8_t GetButton()
 
 void CllbckDecMaking(const ros::TimerEvent &msg)
 {
-    // GetKeyboard();
+    roles[2]();
+    GetKeyboard();
     static uint8_t prev_BS_cmd = 0;
     static uint8_t prev_prev_BS_cmd = 0;
     // command pertama pasti preparation tapi diawali dengan stop dari basestation
@@ -330,7 +334,7 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
 
     transmitAll();
 
-    // printf("game_status: %d %d\n", game_status, robot_base_action);
+    printf("game_status: %d %d\n", game_status, robot_base_action);
 
     // GameProcess();
 }
@@ -385,6 +389,12 @@ void transmitAll()
     msg_pc2stm.odom_offset_x = odom_offset_x;
     msg_pc2stm.odom_offset_y = odom_offset_y;
     pub_pc2stm.publish(msg_pc2stm);
+
+    geometry_msgs::Twist msg_vel;
+    msg_vel.linear.x = motion_return.vx;
+    msg_vel.linear.y = motion_return.vy;
+    msg_vel.angular.z = motion_return.vth;
+    pub_vel_motor.publish(msg_vel);
 }
 // void CllbckButtons(const std_msgs::UInt8ConstPtr &msg)
 // {
@@ -394,4 +404,13 @@ void transmitAll()
 // void CllbckBallSensor(const std_msgs::UInt8MultiArrayConstPtr &msg)
 // {
 //     SetBallSensor(msg->data);
+// }
+
+// int getDataByKey(std::string key)
+// {
+//     auto get_val_x = rediscpp::execute(*get_stream, "get", key.c_str());
+//     if (!get_val_x.is_error_message())
+//         return atoi(get_val_x.as<std::string>().c_str());
+
+//     return 0;
 // }
