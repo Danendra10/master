@@ -16,8 +16,8 @@
     </include>
 
 
-    <!-- <node name="vision_capture" pkg="vision" type="vision_capture" output="screen" respawn="true"/> -->
-    <!-- <node name="vision_main" pkg="vision" type="vision_main" output="screen" respawn="true"/> -->
+    <node name="vision_capture" pkg="vision" type="vision_capture" output="screen" respawn="true"/>
+    <node name="vision_main" pkg="vision" type="vision_main" output="screen" respawn="true"/>
 
     <node name="master" pkg="master" type="master" output="screen" respawn="true"/>
     <node name="comm_multicast" pkg="comm" type="comm_multicast" output="screen" respawn="true" />

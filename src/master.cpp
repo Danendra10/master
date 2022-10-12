@@ -295,6 +295,7 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
 {
     roles[2]();
     GetKeyboard();
+    ObstacleCheck(90,90,200);
     static uint8_t prev_BS_cmd = 0;
     static uint8_t prev_prev_BS_cmd = 0;
     // command pertama pasti preparation tapi diawali dengan stop dari basestation
@@ -334,7 +335,7 @@ void CllbckDecMaking(const ros::TimerEvent &msg)
 
     transmitAll();
 
-    printf("game_status: %d %d\n", game_status, robot_base_action);
+    // printf("game_status: %d %d\n", game_status, robot_base_action);
 
     // GameProcess();
 }
